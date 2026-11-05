@@ -227,11 +227,13 @@ function startData(){
     let first=true;
     unsubs.push(fsSnap(fsCol(fs,col),{includeMetadataChanges:false},snap=>{
       S[col]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
-      if(first){first=false;loadedCount++;if(loadedCount>=COLS.length){mode="listo";clearTimeout(timer)}}
+      if(first){first=false;loadedCount++;if(loadedCount>=COLS.length){mode="listo";clearTimeout(timer);programarSync()}}
       render();
+      if(col==="citas")programarSync();
     },err=>{mode=err&&err.code==="permission-denied"?"permiso":"error";clearTimeout(timer);render()}));
   });
-  unsubs.push(fsSnap(fsDoc(fs,"ajustes","negocio"),s=>{S.ajustes=s.exists()?s.data():{};render()},()=>{}));
+  unsubs.push(fsSnap(fsDoc(fs,"ajustes","negocio"),s=>{S.ajustes=s.exists()?s.data():{};render();programarSync()},()=>{}));
+  unsubs.push(fsSnap(fsCol(fs,"ocupado"),s=>{ocupadoActual={};s.docs.forEach(d=>ocupadoActual[d.id]=d.data());programarSync()},()=>{}));
 }
 function showLogin(on){
   $("#login").classList.toggle("hidden",!on);$("#appwrap").classList.toggle("hidden",on);$("#tabsnav").classList.toggle("hidden",on);
@@ -255,6 +257,35 @@ async function init(){
     try{await sendPasswordResetEmail(auth,em);$("#lg_err").textContent="Te mandamos un correo para cambiar tu contraseña."}catch(e){$("#lg_err").textContent="No se pudo mandar el correo. Revisa que esté bien escrito."}
   });
 }
+// ---------- disponibilidad pública (solo horas ocupadas, sin datos de clientes) ----------
+function durDefault(){return num(S.ajustes&&S.ajustes.durDefault)||3}
+function bloqueados(){return Array.isArray(S.ajustes&&S.ajustes.bloqueados)?S.ajustes.bloqueados.slice():[]}
+let ocupadoActual=null, syncTimer=null;
+const HORAS_TRABAJO=[8,9,10,11,12,13,14,15,16];
+function calcOcupado(){
+  const t=today(), maxD=num(S.ajustes.maxPorDia!=null?S.ajustes.maxPorDia:2), out={};
+  S.citas.forEach(c=>{
+    if(!c.fecha||c.fecha<t||c.estado==="cancelada")return;
+    const o=out[c.fecha]||(out[c.fecha]={fecha:c.fecha,horas:[],citas:0,completo:false});
+    o.citas++;
+    const dur=num(c.duracion)||durDefault();
+    if(!c.hora||dur>=9){o.completo=true;return}
+    const h0=parseInt(c.hora.split(":")[0],10), m0=parseInt(c.hora.split(":")[1]||"0",10);
+    const fin=h0+m0/60+dur;
+    HORAS_TRABAJO.forEach(h=>{if(h+1>h0+m0/60&&h<fin&&!o.horas.includes(h))o.horas.push(h)});
+  });
+  bloqueados().filter(d=>d>=t).forEach(d=>{(out[d]||(out[d]={fecha:d,horas:[],citas:0,completo:false})).completo=true});
+  Object.values(out).forEach(o=>{if(maxD>0&&o.citas>=maxD)o.completo=true;if(HORAS_TRABAJO.every(h=>o.horas.includes(h)))o.completo=true;o.horas.sort((a,b)=>a-b);o.dur=durDefault();delete o.citas});
+  return out;
+}
+function programarSync(){clearTimeout(syncTimer);syncTimer=setTimeout(syncOcupado,1500)}
+function syncOcupado(){
+  if(mode!=="listo"||ocupadoActual===null)return;
+  const nuevo=calcOcupado();
+  Object.values(nuevo).forEach(o=>{const v=ocupadoActual[o.fecha];if(!v||v.completo!==o.completo||v.dur!==o.dur||JSON.stringify(v.horas||[])!==JSON.stringify(o.horas))setDoc(fsDoc(fs,"ocupado",o.fecha),o).catch(()=>{})});
+  Object.keys(ocupadoActual).forEach(f=>{if(!nuevo[f])deleteDoc(fsDoc(fs,"ocupado",f)).catch(()=>{})});
+}
+
 // ---------- respaldo ----------
 function exportar(){
   const data={app:"AutoLuxuries",version:1,fecha:new Date().toISOString(),ajustes:S.ajustes};
@@ -415,7 +446,7 @@ function vServicios(){
 
 function vAjustes(){
   const n=negocio();
-  return '<div class="section"><h1>Ajustes del negocio</h1><p class="note" style="margin:0">Esto aparece en las cotizaciones y mensajes de cobro que copias.</p></div><form data-form="ajustes" class="section"><div class="f"><label for="a_nombre">Nombre del negocio</label><input id="a_nombre" name="nombre" value="'+esc(n.nombre)+'"></div><div class="f"><label for="a_tel">Teléfono</label><input id="a_tel" name="telefono" type="tel" value="'+esc(n.telefono)+'"></div><div class="f"><label for="a_cobro">Cómo te pagan</label><textarea id="a_cobro" name="cobro" placeholder="Ej: Zelle al (503) 000-0000 a nombre de ...">'+esc(n.cobro)+'</textarea></div><div class="f"><label for="a_firma">Mensaje final</label><input id="a_firma" name="firma" value="'+esc(n.firma)+'"></div><div class="btns"><button class="btn pri" type="submit">Guardar ajustes</button></div></form><div class="section"><h2>Respaldo de tus datos</h2><p class="note" style="margin:0">Descarga una copia de todos tus clientes, citas, pagos y cotizaciones. Guárdala en Archivos o en tu correo.</p><div class="btns"><button type="button" class="btn dark" data-act="exportar">Descargar respaldo</button><label class="btn" for="imp_file" style="display:inline-block">Importar respaldo</label><input id="imp_file" type="file" accept=".json,application/json" class="hidden"></div></div><div class="section"><h2>Cuenta</h2><p class="note" style="margin:0">'+esc((auth.currentUser&&auth.currentUser.email)||"")+'</p><div class="btns"><button type="button" class="btn danger" data-act="salir">Cerrar sesión</button></div></div>';
+  return '<div class="section"><h1>Ajustes del negocio</h1><p class="note" style="margin:0">Esto aparece en las cotizaciones y mensajes de cobro que copias.</p></div><form data-form="ajustes" class="section"><div class="f"><label for="a_nombre">Nombre del negocio</label><input id="a_nombre" name="nombre" value="'+esc(n.nombre)+'"></div><div class="f"><label for="a_tel">Teléfono</label><input id="a_tel" name="telefono" type="tel" value="'+esc(n.telefono)+'"></div><div class="f"><label for="a_cobro">Cómo te pagan</label><textarea id="a_cobro" name="cobro" placeholder="Ej: Zelle al (503) 000-0000 a nombre de ...">'+esc(n.cobro)+'</textarea></div><div class="f"><label for="a_firma">Mensaje final</label><input id="a_firma" name="firma" value="'+esc(n.firma)+'"></div><div class="btns"><button class="btn pri" type="submit">Guardar ajustes</button></div></form><div class="section"><h2>Horarios disponibles en tu página</h2><p class="note" style="margin:0">Tu página para agendar esconde las horas que ya tienes ocupadas. Aquí decides cuántas citas aceptas por día y qué días no trabajas.</p><form data-form="disp" class="section"><div class="g2"><div class="f"><label for="d_max">Citas máximas por día</label><select id="d_max" name="maxPorDia">'+opt([[0,"Sin límite (solo bloquea horas)"],[1,"1 cita"],[2,"2 citas"],[3,"3 citas"],[4,"4 citas"],[5,"5 citas"]],num(S.ajustes.maxPorDia!=null?S.ajustes.maxPorDia:2))+'</select></div><div class="f"><label for="d_dur">Duración normal de una cita</label><select id="d_dur" name="durDefault">'+opt([1,2,3,4,5,6,7,8,9].map(h=>[h,h+(h===1?" hora":" horas")]),durDefault())+'</select></div></div><div class="btns"><button class="btn pri" type="submit">Guardar</button></div></form><div class="g2" style="align-items:end"><div class="f"><label for="d_dia">Bloquear un día completo</label><input id="d_dia" type="date" min="'+today()+'"></div><button type="button" class="btn dark" data-act="bloquearDia">Bloquear día</button></div>'+(bloqueados().filter(d=>d>=today()).length?'<div class="kv">'+bloqueados().filter(d=>d>=today()).sort().map(d=>'<div><span>'+esc(fDate(d,{weekday:"long",day:"numeric",month:"long"}))+'</span><span><button type="button" class="btn sm" data-act="desbloquearDia" data-id="'+d+'">Quitar</button></span></div>').join("")+'</div>':'<p class="note" style="margin:0">No tienes días bloqueados.</p>')+'</div><div class="section"><h2>Respaldo de tus datos</h2><p class="note" style="margin:0">Descarga una copia de todos tus clientes, citas, pagos y cotizaciones. Guárdala en Archivos o en tu correo.</p><div class="btns"><button type="button" class="btn dark" data-act="exportar">Descargar respaldo</button><label class="btn" for="imp_file" style="display:inline-block">Importar respaldo</label><input id="imp_file" type="file" accept=".json,application/json" class="hidden"></div></div><div class="section"><h2>Cuenta</h2><p class="note" style="margin:0">'+esc((auth.currentUser&&auth.currentUser.email)||"")+'</p><div class="btns"><button type="button" class="btn danger" data-act="salir">Cerrar sesión</button></div></div>';
 }
 
 // ---------- modales ----------
@@ -483,6 +514,7 @@ function formCita(id,pre){
    '<div class="g2"><div class="f"><label for="ci_tipo">Tipo</label><select id="ci_tipo" name="tipo">'+opt(TIPOS,c.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="ci_veh">Vehículo</label><input id="ci_veh" name="vehiculo" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(c.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"><datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
    '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"></div>'+
    '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
+   '<div class="f"><label for="ci_dur">¿Cuánto dura?</label><select id="ci_dur" name="duracion">'+opt([1,2,3,4,5,6,7,8,9].map(h=>[h,h+(h===1?" hora":" horas")+(h===9?" (todo el día)":"")]),c.duracion||durDefault())+'</select></div>'+
    '<div class="f"><label for="ci_dir">Dirección del servicio</label><input id="ci_dir" name="direccion" value="'+esc(c.direccion||(cli&&cli.direccion)||"")+'"></div>'+
    '<div class="g2"><div class="f"><label for="ci_p">Precio</label><input id="ci_p" name="precio" inputmode="decimal" value="'+esc(c.precio!=null?c.precio:"")+'" placeholder="0.00"></div><div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div></div>'+
    '<label id="ci_memwrap" style="display:'+(m?"flex":"none")+';gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="usaMembresia" '+(c.usaMembresia?"checked":"")+'> Cubierto por su membresía'+(m?' ('+esc(m.planNombre)+', '+Math.max(0,num(m.incluidos)-num(m.usados))+' disponibles)':"")+'</label>'+
@@ -497,7 +529,7 @@ async function submitCita(f){
   if(!o.fecha)return toast("Elige la fecha.");
   const servicio=o.servSel==="__otro"||!o.servSel?o.servTxt:o.servSel;
   const prev=o.id?byId("citas",o.id):null;
-  const rec={id:o.id||undefined,clienteId,tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precio:o.usaMembresia?0:num(o.precio),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
+  const rec={id:o.id||undefined,clienteId,duracion:num(o.duracion)||durDefault(),tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precio:o.usaMembresia?0:num(o.precio),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
   // guardar vehículo en el cliente si es nuevo
   const cli=byId("clientes",clienteId);
   try{
@@ -685,6 +717,8 @@ function msgConfirm(x){
 const ACT={
   go:id=>go(id), close:closeSheet,
   ovclose:(id,el,e)=>{if(e.target===el)closeSheet()},
+  bloquearDia:async()=>{const d=$("#d_dia").value;if(!d)return toast("Elige el día que quieres bloquear.");const L=bloqueados();if(!L.includes(d))L.push(d);await saveAjustes(Object.assign({},S.ajustes,{bloqueados:L}));toast("Día bloqueado")},
+  desbloquearDia:async d=>{await saveAjustes(Object.assign({},S.ajustes,{bloqueados:bloqueados().filter(x=>x!==d)}));toast("Día disponible otra vez")},
   verSol, solAceptar, solRechazar:async id=>{const x=byId("solicitudes",id);if(await askConfirm("¿Rechazar esta solicitud?","Sí, rechazar")){await save("solicitudes",Object.assign({},x,{estado:"rechazada"}));closeSheet();toast("Solicitud rechazada")}},
   solCopiar:id=>copyText(msgConfirm(byId("solicitudes",id))),
   delSol:async id=>{if(await askConfirm("¿Borrar esta solicitud?")){await removeDoc("solicitudes",id);closeSheet()}},
@@ -725,8 +759,8 @@ const CHG={
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
 };
-const SUB={cliente:submitCliente,cita:submitCita,pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
-  ajustes:async f=>{const o=fd(f);try{await saveAjustes({nombre:o.nombre||"AutoLuxuries Auto Detailing",telefono:o.telefono,cobro:o.cobro,firma:o.firma});toast("Ajustes guardados")}catch(e){}}};
+const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{maxPorDia:num(o.maxPorDia),durDefault:num(o.durDefault)||3}));toast("Guardado. Tu página ya muestra los horarios nuevos.")},cliente:submitCliente,cita:submitCita,pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
+  ajustes:async f=>{const o=fd(f);try{await saveAjustes(Object.assign({},S.ajustes,{nombre:o.nombre||"AutoLuxuries Auto Detailing",telefono:o.telefono,cobro:o.cobro,firma:o.firma}));toast("Ajustes guardados")}catch(e){}}};
 
 document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;const fn=ACT[el.dataset.act];if(fn){if(el.dataset.act!=="ovclose")e.preventDefault();fn(el.dataset.id,el,e)}});
 document.addEventListener("change",e=>{if(e.target.id==="imp_file"&&e.target.files[0]){const f=e.target.files[0];askConfirm("¿Importar este respaldo? Los registros con el mismo código se reemplazan.","Sí, importar").then(ok=>{if(ok)importar(f)});e.target.value="";return}const el=e.target.closest("[data-chg]");if(el&&CHG[el.dataset.chg])CHG[el.dataset.chg](el)});

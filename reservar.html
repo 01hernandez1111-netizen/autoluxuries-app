@@ -117,15 +117,16 @@ const APP_URL = new URL("./#solicitudes", location.href).href;
 const T = {
  en:{h1:"Book your mobile detail",sub:"We come to your home or work. Send your request and we'll confirm your appointment by text.",c1:"Cars · SUVs · Trucks",c2:"Boats & RVs",c3:"7 days · 8 am – 5 pm",s1:"What do you need?",serv:"Service",veh:"Vehicle (year, make, model)",s2:"Pick a day and time",date:"Date",time:"Start time",tnote:"This is a request. We'll text you to confirm the time.",s3:"Your information",name:"Full name",tel:"Phone",mail:"Email (optional)",addr:"Service address",notes:"Anything we should know? (optional)",send:"Send request",sending:"Sending…",ok1:"Request sent!",ok2:"Thank you. We'll text you soon to confirm your appointment.",choose:"Choose a service…",other:"Not sure / other",
   types:["Car","SUV","Truck","Boat","RV","Other"],
-  e_serv:"Choose a service.",e_date:"Choose a date.",e_time:"Choose a start time.",e_name:"Write your name.",e_tel:"Write a phone number we can text.",e_addr:"Write the service address.",e_send:"We couldn't send your request. Check your internet and try again."},
+  e_serv:"Choose a service.",e_date:"Choose a date.",e_time:"Choose a start time.",e_name:"Write your name.",e_tel:"Write a phone number we can text.",e_addr:"Write the service address.",e_send:"We couldn't send your request. Check your internet and try again.",full:"This day is fully booked. Please choose another date.",taken:"That time was just booked. Please choose another time."},
  es:{h1:"Agenda tu detallado a domicilio",sub:"Vamos a tu casa o trabajo. Manda tu solicitud y te confirmamos la cita por mensaje.",c1:"Autos · SUVs · Pickups",c2:"Botes y RVs",c3:"7 días · 8 am – 5 pm",s1:"¿Qué necesitas?",serv:"Servicio",veh:"Vehículo (año, marca, modelo)",s2:"Elige día y hora",date:"Fecha",time:"Hora de inicio",tnote:"Es una solicitud. Te mandamos mensaje para confirmar la hora.",s3:"Tus datos",name:"Nombre completo",tel:"Teléfono",mail:"Correo (opcional)",addr:"Dirección del servicio",notes:"¿Algo que debamos saber? (opcional)",send:"Mandar solicitud",sending:"Mandando…",ok1:"¡Solicitud enviada!",ok2:"Gracias. Pronto te mandamos mensaje para confirmar tu cita.",choose:"Elige un servicio…",other:"No sé / otro",
   types:["Auto","SUV","Pickup","Bote","RV","Otro"],
-  e_serv:"Elige un servicio.",e_date:"Elige una fecha.",e_time:"Elige una hora.",e_name:"Escribe tu nombre.",e_tel:"Escribe un teléfono para mandarte mensaje.",e_addr:"Escribe la dirección del servicio.",e_send:"No se pudo mandar. Revisa tu internet e intenta otra vez."}
+  e_serv:"Elige un servicio.",e_date:"Elige una fecha.",e_time:"Elige una hora.",e_name:"Escribe tu nombre.",e_tel:"Escribe un teléfono para mandarte mensaje.",e_addr:"Escribe la dirección del servicio.",e_send:"No se pudo mandar. Revisa tu internet e intenta otra vez.",full:"Este día ya está lleno. Elige otra fecha, por favor.",taken:"Esa hora se acaba de ocupar. Elige otra, por favor."}
 };
 const TIPO_APP=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Otro"];
 const CAT_FOR={"Auto":["Auto"],"SUV / Camioneta":["SUV / Camioneta","Auto"],"Pickup":["Pickup","SUV / Camioneta"],"Bote":["Bote"],"RV / Casa rodante":["RV / Casa rodante"],"Otro":null};
 let lang = (navigator.language||"en").toLowerCase().startsWith("es") ? "es" : "en";
 let servicios = [];
+let ocupado = {};
 const $ = s => document.querySelector(s);
 
 function pad(n){return String(n).padStart(2,"0")}
@@ -134,9 +135,22 @@ const hoy=new Date(), max=new Date(); max.setDate(max.getDate()+90);
 $("#b_date").min=dstr(hoy); $("#b_date").max=dstr(max);
 
 function fmt12(h){const H=h%12||12;return H+":00 "+(h<12?"am":"pm")}
+function libres(f){
+  if(!f)return [8,9,10,11,12,13,14,15,16];
+  const o=ocupado[f]||{};
+  if(o.completo)return [];
+  const busy=o.horas||[];
+  const now=new Date(), esHoy=f===dstr(now);
+  const dur=Math.max(1,Math.min(9,o.dur||1));
+  return [8,9,10,11,12,13,14,15,16].filter(h=>{for(let k=h;k<h+dur&&k<=16;k++){if(busy.includes(k))return false}return !esHoy||h>now.getHours()+1});
+}
 function renderTimes(){
-  const sel=(document.querySelector('input[name="hora"]:checked')||{}).value;
-  let h="";for(let x=8;x<=16;x++){const v=pad(x)+":00";h+='<label><input type="radio" name="hora" value="'+v+'"'+(sel===v?" checked":"")+'><span>'+fmt12(x)+'</span></label>'}
+  const f=$("#b_date").value;
+  const ok=libres(f);
+  let sel=(document.querySelector('input[name="hora"]:checked')||{}).value;
+  if(sel&&!ok.includes(parseInt(sel)))sel="";
+  if(f&&!ok.length){$("#times").innerHTML='<p class="note" style="grid-column:1/-1;color:var(--bad);font-weight:600">'+T[lang].full+'</p>';return}
+  let h="";for(const x of ok){const v=pad(x)+":00";h+='<label><input type="radio" name="hora" value="'+v+'"'+(sel===v?" checked":"")+'><span>'+fmt12(x)+'</span></label>'}
   $("#times").innerHTML=h;
 }
 function renderTypes(){
@@ -161,8 +175,11 @@ function applyLang(){
 }
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{lang=b.dataset.lang;applyLang()}));
 $("#types").addEventListener("change",renderServ);
+$("#b_date").addEventListener("change",renderTimes);
 applyLang();
 
+function cargarOcupado(){return getDocs(collection(db,"ocupado")).then(snap=>{ocupado={};snap.docs.forEach(d=>ocupado[d.id]=d.data());renderTimes()}).catch(()=>{})}
+cargarOcupado();
 getDocs(collection(db,"servicios")).then(snap=>{
   servicios=snap.docs.map(d=>d.data()).filter(s=>s&&s.nombre&&!/discount|example|assessment/i.test(s.nombre)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   renderServ();
@@ -187,6 +204,8 @@ $("#bk").addEventListener("submit",async e=>{
   if(!d.nombre)return err.textContent=t.e_name;
   if(d.telefono.replace(/\D/g,"").length<7)return err.textContent=t.e_tel;
   if(!d.direccion)return err.textContent=t.e_addr;
+  await cargarOcupado();
+  if(!libres(d.fecha).includes(parseInt(d.hora)))return err.textContent=t.taken;
   const btn=$("#send");btn.disabled=true;btn.textContent=t.sending;
   try{
     await addDoc(collection(db,"solicitudes"),d);

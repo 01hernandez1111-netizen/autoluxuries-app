@@ -12,6 +12,10 @@ service cloud.firestore {
     match /servicios/{id} {
       allow read: if true;
     }
+    // La página para agendar puede ver qué horas están ocupadas (sin datos de clientes)
+    match /ocupado/{id} {
+      allow read: if true;
+    }
     // La página para agendar solo puede MANDAR solicitudes nuevas (no verlas ni cambiarlas)
     match /solicitudes/{id} {
       allow create: if request.resource.data.keys().hasOnly(['nombre','telefono','email','direccion','tipo','vehiculo','servicio','fecha','hora','notas','idioma','estado','creado'])
