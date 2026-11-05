@@ -176,7 +176,8 @@ if ("serviceWorker" in navigator) { window.addEventListener("load", () => naviga
 "use strict";
 // ---------- estado ----------
 const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios","solicitudes"];
-const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],ajustes:{}};
+const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],solicitudes:[],ajustes:{}};
+let ultimoError="";
 let db=null, mode="cargando", loadedCount=0, citaFiltro="proximas", pagoMes=null, buscar="";
 const TIPOS=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Moto","Otro"];
 const METODOS=["Efectivo","Zelle","Transferencia bancaria","Tarjeta","Cheque","Otro"];
@@ -230,7 +231,7 @@ function startData(){
       if(first){first=false;loadedCount++;if(loadedCount>=COLS.length){mode="listo";clearTimeout(timer);programarSync()}}
       render();
       if(col==="citas")programarSync();
-    },err=>{mode=err&&err.code==="permission-denied"?"permiso":"error";clearTimeout(timer);render()}));
+    },err=>{mode=err&&err.code==="permission-denied"?"permiso":"error";ultimoError=col+": "+((err&&err.code)||"")+" "+((err&&err.message)||"").slice(0,120);clearTimeout(timer);render()}));
   });
   unsubs.push(fsSnap(fsDoc(fs,"ajustes","negocio"),s=>{S.ajustes=s.exists()?s.data():{};render();programarSync()},()=>{}));
   unsubs.push(fsSnap(fsCol(fs,"ocupado"),s=>{ocupadoActual={};s.docs.forEach(d=>ocupadoActual[d.id]=d.data());programarSync()},()=>{}));
@@ -335,9 +336,11 @@ function render(){
   const views={solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
   let banner="";
   if(mode==="lento")banner='<div class="banner">Sin conexión por ahora. Puedes seguir trabajando: lo que guardes se sube solo cuando vuelva la señal.</div>';
-  else if(mode==="permiso")banner='<div class="banner">Tu cuenta no tiene permiso para ver los datos. Revisa las reglas de Firestore.</div>';
-  else if(mode==="error")banner='<div class="banner">No se pudo conectar con tus datos. Cierra y vuelve a abrir la app.</div>';
-  $("#view").innerHTML=banner+(views[v]||vInicio)();
+  else if(mode==="permiso")banner='<div class="banner">Firebase no da permiso para ver tus datos. Revisa que las reglas de Firestore estén publicadas con tu correo. Entraste como: '+esc((auth.currentUser&&auth.currentUser.email)||"?")+'<br><small>'+esc(ultimoError)+'</small></div>';
+  else if(mode==="error")banner='<div class="banner">No se pudo conectar con tus datos. Cierra y vuelve a abrir la app.<br><small>'+esc(ultimoError)+'</small></div>';
+  let html;
+  try{html=(views[v]||vInicio)()}catch(e){html='<div class="banner">Algo falló al mostrar esta pantalla: '+esc(String(e&&e.message||e))+'</div>'}
+  $("#view").innerHTML=banner+html;
 }
 
 function citaRow(c,showDate){
