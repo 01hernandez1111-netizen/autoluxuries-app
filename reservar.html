@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>Book a Detail · AutoLuxuries</title>
+<meta name="description" content="Book a mobile auto, boat or RV detail with AutoLuxuries Auto Detailing. We come to you, 7 days a week, 8 am to 5 pm.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Página pública para agendar: negro y blanco como la marca, una columna, pensada para celular */
+:root{--bg:#f4f4f4;--card:#fff;--ink:#0d0d0d;--muted:#666;--line:#e2e2e2;--bad:#b23b3b;--ok:#2f7d4f;
+  --display:"Sora",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+header{background:#0a0a0a;color:#fff;padding:calc(22px + env(safe-area-inset-top)) 20px 26px}
+header .in{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:6px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.logo{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:.02em}
+.logo span{font-weight:400;opacity:.85}
+.lang{display:flex;border:1px solid #333;border-radius:999px;overflow:hidden}
+.lang button{background:none;border:0;color:#bbb;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
+.lang button.on{background:#fff;color:#0a0a0a}
+header h1{font-family:var(--display);font-size:26px;margin:14px 0 0;font-weight:600;text-wrap:balance}
+header p{margin:0;color:#bdbdbd;max-width:52ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chips span{border:1px solid #333;border-radius:999px;padding:4px 10px;font-size:13px;color:#ddd}
+main{max-width:620px;margin:0 auto;padding:18px 16px 40px}
+form{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h2{font-family:var(--display);font-size:16px;margin:0;font-weight:600;display:flex;gap:10px;align-items:center}
+.card h2 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:13px;font-weight:700;color:var(--muted)}
+.f input,.f select,.f textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#fff}
+.f textarea{min-height:80px;resize:vertical}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.types label{border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#fff}
+.types input{position:absolute;opacity:0;pointer-events:none}
+.types input:checked+span{color:#fff}
+.types label:has(input:checked){background:var(--ink);border-color:var(--ink);color:#fff}
+.times{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.times label{border:1px solid var(--line);border-radius:10px;padding:10px 4px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;background:#fff;font-variant-numeric:tabular-nums}
+.times input{position:absolute;opacity:0;pointer-events:none}
+.times label:has(input:checked){background:var(--ink);border-color:var(--ink);color:#fff}
+.go{background:var(--ink);color:#fff;border:0;border-radius:12px;padding:15px;font-weight:700;font-size:17px;cursor:pointer}
+.go:disabled{opacity:.6}
+.note{font-size:14px;color:var(--muted);margin:0}
+.err{color:var(--bad);font-weight:600;font-size:14px;min-height:1em}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.done{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px}
+.done h2{font-family:var(--display);margin:0;font-size:22px}
+.hidden{display:none!important}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 30px}
+@media (max-width:420px){.g2{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div class="top"><div class="logo">Auto<span>Luxuries</span></div><div class="lang" role="group" aria-label="Language"><button type="button" data-lang="en" class="on">EN</button><button type="button" data-lang="es">ES</button></div></div>
+  <h1 data-t="h1">Book your mobile detail</h1>
+  <p data-t="sub">We come to your home or work. Send your request and we'll confirm your appointment by text.</p>
+  <div class="chips"><span data-t="c1">Cars · SUVs · Trucks</span><span data-t="c2">Boats &amp; RVs</span><span data-t="c3">7 days · 8 am – 5 pm</span></div>
+</div></header>
+<main>
+<form id="bk" novalidate>
+  <div class="card">
+    <h2><i>1</i><span data-t="s1">What do you need?</span></h2>
+    <div class="types" id="types"></div>
+    <div class="f"><label for="b_serv" data-t="serv">Service</label><select id="b_serv" required></select></div>
+    <div class="f"><label for="b_veh" data-t="veh">Vehicle (year, make, model)</label><input id="b_veh" maxlength="120" placeholder="2021 Toyota RAV4"></div>
+  </div>
+  <div class="card">
+    <h2><i>2</i><span data-t="s2">Pick a day and time</span></h2>
+    <div class="f"><label for="b_date" data-t="date">Date</label><input id="b_date" type="date" required></div>
+    <div class="f"><label data-t="time">Start time</label><div class="times" id="times"></div></div>
+    <p class="note" data-t="tnote">This is a request. We'll text you to confirm the time.</p>
+  </div>
+  <div class="card">
+    <h2><i>3</i><span data-t="s3">Your information</span></h2>
+    <div class="f"><label for="b_name" data-t="name">Full name</label><input id="b_name" autocomplete="name" maxlength="80" required></div>
+    <div class="g2"><div class="f"><label for="b_tel" data-t="tel">Phone</label><input id="b_tel" type="tel" autocomplete="tel" maxlength="25" required></div><div class="f"><label for="b_mail" data-t="mail">Email (optional)</label><input id="b_mail" type="email" autocomplete="email" maxlength="100"></div></div>
+    <div class="f"><label for="b_dir" data-t="addr">Service address</label><input id="b_dir" autocomplete="street-address" maxlength="200" required></div>
+    <div class="f"><label for="b_notes" data-t="notes">Anything we should know? (optional)</label><textarea id="b_notes" maxlength="900"></textarea></div>
+    <div class="hp" aria-hidden="true"><label for="b_web">Website</label><input id="b_web" tabindex="-1" autocomplete="off"></div>
+  </div>
+  <div class="err" id="err"></div>
+  <button class="go" id="send" type="submit" data-t="send">Send request</button>
+</form>
+<div class="done hidden" id="done"><h2 data-t="ok1">Request sent!</h2><p data-t="ok2" style="margin:0">Thank you. We'll text you soon to confirm your appointment.</p><p class="note" id="sum"></p></div>
+</main>
+<footer>AutoLuxuries Auto Detailing · Portland / Vancouver</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const app = initializeApp({
+  apiKey: "AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",
+  authDomain: "autoluxuries.firebaseapp.com",
+  projectId: "autoluxuries",
+  storageBucket: "autoluxuries.firebasestorage.app",
+  messagingSenderId: "315079290347",
+  appId: "1:315079290347:web:2f9f470fae7721bce73dae"
+});
+const db = getFirestore(app);
+const NTFY = "https://ntfy.sh/autoluxuries-35e5b24555232d2e";
+const APP_URL = new URL("./#solicitudes", location.href).href;
+
+const T = {
+ en:{h1:"Book your mobile detail",sub:"We come to your home or work. Send your request and we'll confirm your appointment by text.",c1:"Cars · SUVs · Trucks",c2:"Boats & RVs",c3:"7 days · 8 am – 5 pm",s1:"What do you need?",serv:"Service",veh:"Vehicle (year, make, model)",s2:"Pick a day and time",date:"Date",time:"Start time",tnote:"This is a request. We'll text you to confirm the time.",s3:"Your information",name:"Full name",tel:"Phone",mail:"Email (optional)",addr:"Service address",notes:"Anything we should know? (optional)",send:"Send request",sending:"Sending…",ok1:"Request sent!",ok2:"Thank you. We'll text you soon to confirm your appointment.",choose:"Choose a service…",other:"Not sure / other",
+  types:["Car","SUV","Truck","Boat","RV","Other"],
+  e_serv:"Choose a service.",e_date:"Choose a date.",e_time:"Choose a start time.",e_name:"Write your name.",e_tel:"Write a phone number we can text.",e_addr:"Write the service address.",e_send:"We couldn't send your request. Check your internet and try again."},
+ es:{h1:"Agenda tu detallado a domicilio",sub:"Vamos a tu casa o trabajo. Manda tu solicitud y te confirmamos la cita por mensaje.",c1:"Autos · SUVs · Pickups",c2:"Botes y RVs",c3:"7 días · 8 am – 5 pm",s1:"¿Qué necesitas?",serv:"Servicio",veh:"Vehículo (año, marca, modelo)",s2:"Elige día y hora",date:"Fecha",time:"Hora de inicio",tnote:"Es una solicitud. Te mandamos mensaje para confirmar la hora.",s3:"Tus datos",name:"Nombre completo",tel:"Teléfono",mail:"Correo (opcional)",addr:"Dirección del servicio",notes:"¿Algo que debamos saber? (opcional)",send:"Mandar solicitud",sending:"Mandando…",ok1:"¡Solicitud enviada!",ok2:"Gracias. Pronto te mandamos mensaje para confirmar tu cita.",choose:"Elige un servicio…",other:"No sé / otro",
+  types:["Auto","SUV","Pickup","Bote","RV","Otro"],
+  e_serv:"Elige un servicio.",e_date:"Elige una fecha.",e_time:"Elige una hora.",e_name:"Escribe tu nombre.",e_tel:"Escribe un teléfono para mandarte mensaje.",e_addr:"Escribe la dirección del servicio.",e_send:"No se pudo mandar. Revisa tu internet e intenta otra vez."}
+};
+const TIPO_APP=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Otro"];
+const CAT_FOR={"Auto":["Auto"],"SUV / Camioneta":["SUV / Camioneta","Auto"],"Pickup":["Pickup","SUV / Camioneta"],"Bote":["Bote"],"RV / Casa rodante":["RV / Casa rodante"],"Otro":null};
+let lang = (navigator.language||"en").toLowerCase().startsWith("es") ? "es" : "en";
+let servicios = [];
+const $ = s => document.querySelector(s);
+
+function pad(n){return String(n).padStart(2,"0")}
+function dstr(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+const hoy=new Date(), max=new Date(); max.setDate(max.getDate()+90);
+$("#b_date").min=dstr(hoy); $("#b_date").max=dstr(max);
+
+function fmt12(h){const H=h%12||12;return H+":00 "+(h<12?"am":"pm")}
+function renderTimes(){
+  const sel=(document.querySelector('input[name="hora"]:checked')||{}).value;
+  let h="";for(let x=8;x<=16;x++){const v=pad(x)+":00";h+='<label><input type="radio" name="hora" value="'+v+'"'+(sel===v?" checked":"")+'><span>'+fmt12(x)+'</span></label>'}
+  $("#times").innerHTML=h;
+}
+function renderTypes(){
+  const sel=(document.querySelector('input[name="tipo"]:checked')||{}).value||"Auto";
+  $("#types").innerHTML=T[lang].types.map((l,i)=>'<label><input type="radio" name="tipo" value="'+TIPO_APP[i]+'"'+(sel===TIPO_APP[i]?" checked":"")+'><span>'+l+'</span></label>').join("");
+}
+function renderServ(){
+  const tipo=(document.querySelector('input[name="tipo"]:checked')||{}).value||"Auto";
+  const cats=CAT_FOR[tipo];
+  const prev=$("#b_serv").value;
+  let list=servicios.filter(s=>!cats||cats.includes(s.categoria)||s.categoria==="Otro");
+  if(!list.length)list=servicios;
+  const o=['<option value="">'+T[lang].choose+'</option>'].concat(list.map(s=>'<option'+(s.nombre===prev?" selected":"")+'>'+s.nombre.replace(/</g,"&lt;")+'</option>'));
+  o.push('<option value="__otro"'+(prev==="__otro"?" selected":"")+'>'+T[lang].other+'</option>');
+  $("#b_serv").innerHTML=o.join("");
+}
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-t]").forEach(el=>{const k=el.dataset.t;if(T[lang][k])el.textContent=T[lang][k]});
+  document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.lang===lang));
+  renderTypes();renderServ();renderTimes();
+}
+document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{lang=b.dataset.lang;applyLang()}));
+$("#types").addEventListener("change",renderServ);
+applyLang();
+
+getDocs(collection(db,"servicios")).then(snap=>{
+  servicios=snap.docs.map(d=>d.data()).filter(s=>s&&s.nombre&&!/discount|example|assessment/i.test(s.nombre)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  renderServ();
+}).catch(()=>{});
+
+$("#bk").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const t=T[lang], err=$("#err"); err.textContent="";
+  if($("#b_web").value)return; // robot
+  const tipo=(document.querySelector('input[name="tipo"]:checked')||{}).value||"Auto";
+  const hora=(document.querySelector('input[name="hora"]:checked')||{}).value||"";
+  const serv=$("#b_serv").value;
+  const d={
+    nombre:$("#b_name").value.trim(),telefono:$("#b_tel").value.trim(),email:$("#b_mail").value.trim(),
+    direccion:$("#b_dir").value.trim(),tipo,vehiculo:$("#b_veh").value.trim(),
+    servicio:serv==="__otro"?(lang==="es"?"No sabe / otro":"Not sure / other"):serv,
+    fecha:$("#b_date").value,hora,notas:$("#b_notes").value.trim(),idioma:lang,estado:"nueva",creado:Date.now()
+  };
+  if(!serv)return err.textContent=t.e_serv;
+  if(!d.fecha)return err.textContent=t.e_date;
+  if(!d.hora)return err.textContent=t.e_time;
+  if(!d.nombre)return err.textContent=t.e_name;
+  if(d.telefono.replace(/\D/g,"").length<7)return err.textContent=t.e_tel;
+  if(!d.direccion)return err.textContent=t.e_addr;
+  const btn=$("#send");btn.disabled=true;btn.textContent=t.sending;
+  try{
+    await addDoc(collection(db,"solicitudes"),d);
+    try{await fetch(NTFY,{method:"POST",body:"Nueva solicitud: "+d.servicio+" - "+d.fecha+" "+d.hora+" ("+d.tipo+"). Abre tu app para verla.",headers:{"Title":"AutoLuxuries: nueva cita","Tags":"car","Priority":"high","Click":APP_URL}})}catch(_){}
+    $("#bk").classList.add("hidden");$("#done").classList.remove("hidden");
+    $("#sum").textContent=d.servicio+" · "+d.fecha+" · "+fmt12(parseInt(d.hora));
+    window.scrollTo(0,0);
+  }catch(x){err.textContent=t.e_send;btn.disabled=false;btn.textContent=t.send}
+});
+</script>
+</body>
+</html>

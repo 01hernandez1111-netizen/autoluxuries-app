@@ -175,7 +175,7 @@ if ("serviceWorker" in navigator) { window.addEventListener("load", () => naviga
 (function(){
 "use strict";
 // ---------- estado ----------
-const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios"];
+const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios","solicitudes"];
 const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],ajustes:{}};
 let db=null, mode="cargando", loadedCount=0, citaFiltro="proximas", pagoMes=null, buscar="";
 const TIPOS=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Moto","Otro"];
@@ -283,7 +283,7 @@ const I={
  user:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>'
 };
 const TABS=[["inicio","Inicio","home"],["citas","Citas","cal"],["clientes","Clientes","users"],["cobros","Cobros","cash"],["mas","Más","more"]];
-const SUBVIEWS={estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas"};
+const SUBVIEWS={solicitudes:"inicio",estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas"};
 
 function route(){const h=(location.hash||"").replace("#","");return h||"inicio"}
 function go(v){if(location.hash!=="#"+v)location.hash=v;else render();window.scrollTo(0,0)}
@@ -293,7 +293,7 @@ window.addEventListener("hashchange",()=>{render();window.scrollTo(0,0)});
 function render(){
   const v=route(); const tab=SUBVIEWS[v]||v;
   $("#tabs").innerHTML=TABS.map(([k,l,i])=>'<button type="button" data-act="go" data-id="'+k+'" class="'+(tab===k?"on":"")+'">'+I[i]+'<span>'+l+'</span></button>').join("");
-  const views={inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
+  const views={solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
   let banner="";
   if(mode==="lento")banner='<div class="banner">Sin conexión por ahora. Puedes seguir trabajando: lo que guardes se sube solo cuando vuelva la señal.</div>';
   else if(mode==="permiso")banner='<div class="banner">Tu cuenta no tiene permiso para ver los datos. Revisa las reglas de Firestore.</div>';
@@ -317,6 +317,8 @@ function vInicio(){
   const renov=S.membresias.filter(m=>m.estado==="activa"&&m.proxCobro&&m.proxCobro<=addDays(t,7)).sort((a,b)=>a.proxCobro.localeCompare(b.proxCobro));
   const estAb=S.estimaciones.filter(e=>e.estado==="enviada"||e.estado==="borrador").length;
   let h='<div class="section"><h1>'+esc(fDate(t,{weekday:"long",day:"numeric",month:"long"}).replace(/^./,m=>m.toUpperCase()))+'</h1></div>';
+  const nuevas=S.solicitudes.filter(x=>x.estado==="nueva").sort((a,b)=>(b.creado||0)-(a.creado||0));
+  if(nuevas.length)h+='<div class="section"><h2>Solicitudes nuevas <span class="pill p-bad">'+nuevas.length+'</span><button type="button" class="lnk" data-act="go" data-id="solicitudes">Ver todas</button></h2><div class="list">'+nuevas.slice(0,5).map(solRow).join("")+'</div></div>';
   h+='<div class="tiles"><div class="tile gold"><span class="k">Cobrado este mes</span><span class="v">'+money(ingresos)+'</span></div><div class="tile"><span class="k">Por cobrar</span><span class="v" style="color:'+(porCobrar>0?"var(--warn)":"inherit")+'">'+money(porCobrar)+'</span></div><div class="tile"><span class="k">Citas hoy</span><span class="v">'+hoy.length+'</span></div><div class="tile"><span class="k">Próximos 7 días</span><span class="v">'+prox.length+'</span></div></div>';
   h+='<div class="quick"><button type="button" data-act="newCita">'+I.cal+'Cita</button><button type="button" data-act="newCliente">'+I.user+'Cliente</button><button type="button" data-act="newEst">'+I.doc+'Cotización</button><button type="button" data-act="newPago">'+I.cash+'Pago</button></div>';
   h+='<div class="section"><h2>Hoy <button type="button" class="lnk" data-act="go" data-id="citas">Ver citas</button></h2>'+(hoy.length?'<div class="list">'+hoy.map(c=>citaRow(c,false)).join("")+'</div>':'<div class="empty">No tienes citas hoy.<button type="button" class="btn sm pri" data-act="newCita">Agendar una cita</button></div>')+'</div>';
@@ -376,7 +378,7 @@ function vMas(){
   const abiertas=S.estimaciones.filter(e=>e.estado==="borrador"||e.estado==="enviada").length;
   const act=S.membresias.filter(m=>m.estado==="activa").length;
   const item=(v,ic,t,s)=>'<button type="button" class="row" data-act="go" data-id="'+v+'"><div class="when" style="border:0;width:30px;padding:0">'+I[ic].replace("<svg",'<svg style="width:22px;height:22px;stroke:var(--gold-ink)"')+'</div><div class="main"><span class="t">'+t+'</span><span class="s">'+s+'</span></div><div class="r">›</div></button>';
-  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
+  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("solicitudes","cal","Solicitudes de clientes",S.solicitudes.filter(x=>x.estado==="nueva").length+" nueva"+(S.solicitudes.filter(x=>x.estado==="nueva").length===1?"":"s")+" · desde tu sitio web")+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
 }
 
 const EST_PILL={borrador:'<span class="pill p-mut">Borrador</span>',enviada:'<span class="pill p-info">Enviada</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-bad">Rechazada</span>'};
@@ -477,7 +479,7 @@ function formCita(id,pre){
   const vehs=cli&&cli.vehiculos?cli.vehiculos:[];
   const m=c.clienteId?memActiva(c.clienteId):null;
   openSheet(id?"Editar cita":"Nueva cita",
-   '<input type="hidden" name="id" value="'+esc(id||"")+'"><input type="hidden" name="estId" value="'+esc(c.estId||"")+'"><div class="f"><label for="ci_cli">Cliente</label><select id="ci_cli" name="clienteId" data-chg="citaCli">'+clienteOpts(c.clienteId)+'</select></div><div id="ci_new" class="g2" style="display:none"><div class="f"><label for="ci_nn">Nombre</label><input id="ci_nn" name="nuevoNombre"></div><div class="f"><label for="ci_nt">Teléfono</label><input id="ci_nt" name="nuevoTel" type="tel"></div></div>'+
+   '<input type="hidden" name="id" value="'+esc(id||"")+'"><input type="hidden" name="estId" value="'+esc(c.estId||"")+'"><input type="hidden" name="solId" value="'+esc(c.solId||"")+'"><div class="f"><label for="ci_cli">Cliente</label><select id="ci_cli" name="clienteId" data-chg="citaCli">'+clienteOpts(c.clienteId)+'</select></div><div id="ci_new" class="g2" style="display:none"><div class="f"><label for="ci_nn">Nombre</label><input id="ci_nn" name="nuevoNombre"></div><div class="f"><label for="ci_nt">Teléfono</label><input id="ci_nt" name="nuevoTel" type="tel"></div></div>'+
    '<div class="g2"><div class="f"><label for="ci_tipo">Tipo</label><select id="ci_tipo" name="tipo">'+opt(TIPOS,c.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="ci_veh">Vehículo</label><input id="ci_veh" name="vehiculo" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(c.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"><datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
    '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"></div>'+
    '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
@@ -503,6 +505,7 @@ async function submitCita(f){
     const nid=await save("citas",rec);
     await contarMembresia(nid,rec);
     if(o.estId){const e=byId("estimaciones",o.estId);if(e&&e.estado!=="aceptada")await save("estimaciones",Object.assign({},e,{estado:"aceptada"}))}
+    if(o.solId){const sl=byId("solicitudes",o.solId);if(sl)await save("solicitudes",Object.assign({},sl,{estado:"aceptada",citaId:nid,clienteId}))}
     closeSheet();toast("Cita guardada");
   }catch(e){}
 }
@@ -639,10 +642,53 @@ async function submitRenovar(f){
   try{await save("pagos",{clienteId:m.clienteId,memId:m.id,monto:num(o.monto),fecha:o.fecha||today(),metodo:o.metodo,concepto:"Membresía "+m.planNombre});await save("membresias",Object.assign({},m,{usados:0,proxCobro:prox}));closeSheet();toast("Membresía renovada")}catch(e){}
 }
 
+// --- solicitudes (desde la página pública para agendar) ---
+const SOL_PILL={nueva:'<span class="pill p-bad">Nueva</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-mut">Rechazada</span>'};
+function solRow(x){return '<button type="button" class="row" data-act="verSol" data-id="'+x.id+'"><div class="when"><b>'+esc(fDate(x.fecha,{day:"numeric"}))+'</b><span>'+esc(fDate(x.fecha,{month:"short"}))+'</span></div><div class="main"><span class="t">'+esc(x.nombre)+'</span><span class="s">'+esc(x.servicio||"Servicio")+(x.hora?" · "+esc(fHora(x.hora)):"")+(x.vehiculo?" · "+esc(x.vehiculo):"")+'</span></div><div class="r">'+(SOL_PILL[x.estado]||"")+'</div></button>'}
+function vSolicitudes(){
+  const L=S.solicitudes.slice().sort((a,b)=>(a.estado==="nueva"?0:1)-(b.estado==="nueva"?0:1)||(b.creado||0)-(a.creado||0));
+  const url=location.origin+location.pathname.replace(/[^/]*$/,"")+"reservar.html";
+  let h='<div class="section"><h1>Solicitudes de clientes</h1><p class="note" style="margin:0">Llegan desde tu página para agendar. Revisa cada una y acéptala para crear la cita.</p></div>';
+  h+=L.length?'<div class="list">'+L.map(solRow).join("")+'</div>':'<div class="empty">Todavía no llegan solicitudes.</div>';
+  h+='<div class="section"><h2>Tu página para agendar</h2><div class="kv"><div><span>Enlace</span><span style="font-weight:500">'+esc(url)+'</span></div></div><div class="btns"><button type="button" class="btn" data-act="copiarLink">Copiar enlace</button><a class="btn" href="reservar.html" target="_blank" rel="noopener">Abrir página</a></div></div>';
+  return h;
+}
+function clientePorTel(tel){const d=String(tel||"").replace(/\D/g,"").slice(-10);if(d.length<7)return null;return S.clientes.find(c=>String(c.telefono||"").replace(/\D/g,"").slice(-10)===d)}
+function verSol(id){
+  const x=byId("solicitudes",id);if(!x)return closeSheet();
+  const ya=clientePorTel(x.telefono);
+  const tel=x.telefono?'<a class="tel" href="tel:'+esc(String(x.telefono).replace(/[^0-9+]/g,""))+'">'+esc(x.telefono)+'</a>':"—";
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(x.nombre)+'</span></div><div><span>Teléfono</span><span>'+tel+'</span></div>'+(x.email?'<div><span>Email</span><span>'+esc(x.email)+'</span></div>':"")+'<div><span>Fecha pedida</span><span>'+esc(fDate(x.fecha,{weekday:"long",day:"numeric",month:"long"}))+(x.hora?", "+esc(fHora(x.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(x.servicio||"—")+'</span></div><div><span>'+esc(x.tipo||"Vehículo")+'</span><span>'+esc(x.vehiculo||"—")+'</span></div><div><span>Dirección</span><span>'+esc(x.direccion||"—")+'</span></div><div><span>Idioma</span><span>'+(x.idioma==="es"?"Español":"English")+'</span></div><div><span>Estado</span><span>'+(SOL_PILL[x.estado]||"")+'</span></div></div>';
+  if(x.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(x.notas)+'</p>';
+  if(ya)b+='<p class="note" style="margin:0">Ya es tu cliente: <b>'+esc(ya.nombre)+'</b>. La cita se le agrega a su historial.</p>';
+  const ocup=S.citas.filter(c=>c.fecha===x.fecha&&c.estado!=="cancelada");
+  if(ocup.length)b+='<p class="note" style="margin:0">Ese día ya tienes '+ocup.length+' cita'+(ocup.length===1?"":"s")+': '+ocup.map(c=>esc((fHora(c.hora)||"sin hora")+" "+cliNombre(c.clienteId))).join(", ")+'.</p>';
+  b+='<div class="btns">'+(x.estado==="nueva"?'<button type="button" class="btn pri" data-act="solAceptar" data-id="'+id+'">Aceptar y crear cita</button><button type="button" class="btn danger" data-act="solRechazar" data-id="'+id+'">Rechazar</button>':"")+'<button type="button" class="btn" data-act="solCopiar" data-id="'+id+'">Copiar mensaje de confirmación</button></div>';
+  openSheet("Solicitud",b,'<button type="button" class="btn danger" data-act="delSol" data-id="'+id+'">Borrar</button>');
+}
+async function solAceptar(id){
+  const x=byId("solicitudes",id);if(!x)return;
+  let c=clientePorTel(x.telefono);
+  if(!c){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:"Llegó por la página para agendar.",creado:today()});c={id:cid,direccion:x.direccion}}
+  const sv=S.servicios.find(v=>v.nombre===x.servicio);
+  closeSheet();
+  setTimeout(()=>formCita(null,{clienteId:c.id,tipo:x.tipo,vehiculo:x.vehiculo,servicio:x.servicio,fecha:x.fecha,hora:x.hora,direccion:x.direccion,precio:sv?sv.precio:"",notas:x.notas,solId:id}),60);
+}
+function msgConfirm(x){
+  const n=negocio(),first=(x.nombre||"").split(" ")[0],f=fDate(x.fecha,{weekday:"long",day:"numeric",month:"long"}),h=fHora(x.hora);
+  if(x.idioma==="es")return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\nServicio: "+(x.servicio||"")+"\nDirección: "+(x.direccion||"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  let fe=f;try{fe=new Date(x.fecha+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}catch(e){}
+  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(x.service||x.servicio||"")+"\nAddress: "+(x.direccion||"")+"\n\nThank you! "+(n.telefono?"\n"+n.telefono:"");
+}
+
 // ---------- acciones ----------
 const ACT={
   go:id=>go(id), close:closeSheet,
   ovclose:(id,el,e)=>{if(e.target===el)closeSheet()},
+  verSol, solAceptar, solRechazar:async id=>{const x=byId("solicitudes",id);if(await askConfirm("¿Rechazar esta solicitud?","Sí, rechazar")){await save("solicitudes",Object.assign({},x,{estado:"rechazada"}));closeSheet();toast("Solicitud rechazada")}},
+  solCopiar:id=>copyText(msgConfirm(byId("solicitudes",id))),
+  delSol:async id=>{if(await askConfirm("¿Borrar esta solicitud?")){await removeDoc("solicitudes",id);closeSheet()}},
+  copiarLink:()=>copyText(location.origin+location.pathname.replace(/[^/]*$/,"")+"reservar.html"),
   newCita:()=>formCita(), newCitaFor:id=>formCita(null,{clienteId:id}), editCita:id=>formCita(id), verCita,
   newCliente:()=>formCliente(), editCliente:id=>formCliente(id), verCliente,
   newPago:()=>formPago(), editPago:id=>formPago(byId("pagos",id)), verPago,

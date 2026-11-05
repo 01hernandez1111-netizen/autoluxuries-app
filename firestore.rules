@@ -1,9 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function esDueno() {
+      return request.auth != null && request.auth.token.email == "01hernandez1111@gmail.com";
+    }
+    // Todo es privado: solo tu cuenta puede leer y escribir
     match /{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.token.email == "01hernandez1111@gmail.com";
+      allow read, write: if esDueno();
+    }
+    // La página para agendar puede leer la lista de servicios
+    match /servicios/{id} {
+      allow read: if true;
+    }
+    // La página para agendar solo puede MANDAR solicitudes nuevas (no verlas ni cambiarlas)
+    match /solicitudes/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['nombre','telefono','email','direccion','tipo','vehiculo','servicio','fecha','hora','notas','idioma','estado','creado'])
+        && request.resource.data.estado == 'nueva'
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 80
+        && request.resource.data.telefono is string && request.resource.data.telefono.size() <= 25
+        && request.resource.data.email is string && request.resource.data.email.size() <= 100
+        && request.resource.data.direccion is string && request.resource.data.direccion.size() <= 200
+        && request.resource.data.vehiculo is string && request.resource.data.vehiculo.size() <= 120
+        && request.resource.data.servicio is string && request.resource.data.servicio.size() <= 120
+        && request.resource.data.notas is string && request.resource.data.notas.size() <= 900
+        && request.resource.data.fecha is string && request.resource.data.fecha.size() == 10
+        && request.resource.data.hora is string && request.resource.data.hora.size() <= 5;
     }
   }
 }
