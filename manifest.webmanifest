@@ -1,0 +1,16 @@
+{
+  "name": "AutoLuxuries Auto Detailing",
+  "short_name": "AutoLuxuries",
+  "description": "Citas, clientes, cobros, cotizaciones y membresías de AutoLuxuries.",
+  "start_url": "./#inicio",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

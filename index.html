@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="AutoLuxuries">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>AutoLuxuries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: app de una columna para celular, blanco y negro como la marca, barra superior negra, navegación fija abajo */
+:root{
+  --bg:#f4f4f4; --card:#ffffff; --ink:#0d0d0d; --muted:#666666; --line:#e2e2e2;
+  --gold:#0d0d0d; --gold-ink:#0d0d0d; --on-gold:#ffffff; --head:#0a0a0a; --head-ink:#ffffff;
+  --ok:#2f7d4f; --ok-bg:#e4f2e9; --warn:#a46312; --warn-bg:#fbefd9; --bad:#b23b3b; --bad-bg:#f8e3e3; --info:#2f5d9a; --info-bg:#e3ecf8;
+  --display:"Sora",system-ui,sans-serif; --body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0b0b; --card:#161616; --ink:#f2f2f2; --muted:#a0a0a0; --line:#2b2b2b;
+    --gold:#ffffff; --gold-ink:#ffffff; --on-gold:#0b0b0b; --head:#000000; --head-ink:#ffffff;
+    --ok:#6fcf97; --ok-bg:#16301f; --warn:#f0b35a; --warn-bg:#352612; --bad:#f08080; --bad-bg:#3a1a1a; --info:#8db6ef; --info-bg:#172438;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0b0b; --card:#161616; --ink:#f2f2f2; --muted:#a0a0a0; --line:#2b2b2b;
+  --gold:#ffffff; --gold-ink:#ffffff; --on-gold:#0b0b0b; --head:#000000; --head-ink:#ffffff;
+  --ok:#6fcf97; --ok-bg:#16301f; --warn:#f0b35a; --warn-bg:#352612; --bad:#f08080; --bad-bg:#3a1a1a; --info:#8db6ef; --info-bg:#172438;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.login{min-height:100vh;min-height:100dvh;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px}
+.login form{width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px}
+.login .logo{font-family:var(--display);font-size:30px;font-weight:600;letter-spacing:.02em}
+.login .logo span{font-weight:400;opacity:.85}
+.login small{color:#9a9a9a;letter-spacing:.08em;text-transform:uppercase;font-size:12px;margin-top:-10px}
+.login .f input,.login input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #2b2b2b;background:#161616;color:#fff}
+.login label{font-size:13px;font-weight:700;color:#a0a0a0}
+.login .go{background:#fff;color:#0a0a0a;border:0;border-radius:12px;padding:13px;font-weight:700;cursor:pointer}
+.login .lnk2{background:none;border:0;color:#cfcfcf;text-decoration:underline;cursor:pointer;align-self:flex-start;padding:0}
+.login .err{color:#f08080;font-size:14px;min-height:1em}
+.hidden{display:none!important}
+header.top{border-bottom:1px solid var(--line);background:var(--head);color:var(--head-ink);padding:calc(14px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 16px calc(18px + env(safe-area-inset-left));display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:5}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand b{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.02em}
+.brand b span{font-weight:400;opacity:.85}
+.brand small{font-size:12px;color:#9a9a9a;letter-spacing:.08em;text-transform:uppercase}
+.top .plus{background:#ffffff;color:#0a0a0a;border:0;border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer}
+main{padding:16px;display:flex;flex-direction:column;gap:18px;flex:1}
+h1{font-family:var(--display);font-size:22px;margin:0;font-weight:600;text-wrap:balance}
+h2{font-family:var(--display);font-size:15px;margin:0;font-weight:600;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:8px}
+h2 .lnk{font-family:var(--body);font-size:14px;color:var(--gold-ink);background:none;border:0;cursor:pointer;font-weight:600;padding:4px 0}
+.section{display:flex;flex-direction:column;gap:10px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.tile .v{font-family:var(--display);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.tile.gold{background:var(--head);border-color:var(--line);color:var(--head-ink)}
+.tile.gold .k{color:#9a9a9a}.tile.gold .v{color:#ffffff}
+.list{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:flex;gap:12px;align-items:center;padding:13px 14px;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:100%}
+.row:first-child{border-top:0}
+.row:hover{background:color-mix(in srgb,var(--gold) 6%,transparent)}
+.row .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row .t{font-weight:600;overflow-wrap:anywhere}
+.row .s{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.row .r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.when{width:54px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;border-right:1px solid var(--line);padding-right:10px}
+.when b{font-family:var(--display);font-size:15px}
+.when span{font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}.p-bad{background:var(--bad-bg);color:var(--bad)}.p-info{background:var(--info-bg);color:var(--info)}.p-mut{background:var(--line);color:var(--muted)}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:18px;color:var(--muted);font-size:15px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.quick button{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}
+.quick svg{width:22px;height:22px;stroke:var(--gold-ink)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 13px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.search{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
+.day{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 2px -2px}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:6;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs .in{max-width:640px;width:100%;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs button{background:none;border:0;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+nav.tabs svg{width:22px;height:22px;stroke:currentColor}
+nav.tabs button.on{color:var(--gold-ink)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.btn.sm{padding:7px 11px;font-size:14px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.menu{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(10,12,15,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.sheet .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card);gap:10px}
+.sheet .hd h3{font-family:var(--display);font-size:17px;margin:0;font-weight:600}
+.sheet .hd .x{background:none;border:0;font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;padding:6px}
+.sheet .bd{padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.sheet .ft{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:13px;font-weight:700;color:var(--muted)}
+.f input,.f select,.f textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card)}
+.f textarea{min-height:70px;resize:vertical}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.itemrow{display:grid;grid-template-columns:1fr 64px 92px 34px;gap:6px;align-items:center}
+.vehrow{display:grid;grid-template-columns:120px 1fr 34px;gap:6px;align-items:center}
+.itemrow input,.itemrow select,.vehrow input,.vehrow select{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);width:100%;min-width:0}
+.del{background:none;border:0;color:var(--bad);font-size:20px;cursor:pointer;line-height:1}
+.kv{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:15px}
+.kv div:first-child{border-top:0}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{text-align:right;font-weight:600;overflow-wrap:anywhere}
+.total{display:flex;justify-content:space-between;font-family:var(--display);font-size:18px;font-weight:600;padding:4px 2px}
+.note{font-size:14px;color:var(--muted)}
+.banner{background:var(--warn-bg);color:var(--warn);padding:10px 14px;border-radius:12px;font-size:14px;font-weight:600}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;max-width:90%;text-align:center}
+.copybox{width:100%;min-height:140px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:14px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+a.tel{color:var(--gold-ink);font-weight:600;text-decoration:none}
+@media (max-width:400px){.g2{grid-template-columns:1fr}.quick{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<div class="login hidden" id="login"><form id="loginForm" novalidate><div class="logo">Auto<span>Luxuries</span></div><small>Auto Detailing · Control</small><div class="f"><label for="lg_e">Correo</label><input id="lg_e" type="email" autocomplete="username" required></div><div class="f"><label for="lg_p">Contraseña</label><input id="lg_p" type="password" autocomplete="current-password" required></div><div class="err" id="lg_err"></div><button class="go" type="submit" id="lg_btn">Entrar</button><button class="lnk2" type="button" id="lg_reset">Olvidé mi contraseña</button></form></div>
+<div class="app" id="appwrap">
+  <header class="top">
+    <div class="brand"><b>Auto<span>Luxuries</span></b><small>Auto Detailing</small></div>
+    <button class="plus" data-act="newCita" type="button">+ Cita</button>
+  </header>
+  <main id="view"></main>
+</div>
+<nav class="tabs" id="tabsnav"><div class="in" id="tabs"></div></nav>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection as fsCol, doc as fsDoc, setDoc, deleteDoc, onSnapshot as fsSnap } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",
+  authDomain: "autoluxuries.firebaseapp.com",
+  projectId: "autoluxuries",
+  storageBucket: "autoluxuries.firebasestorage.app",
+  messagingSenderId: "315079290347",
+  appId: "1:315079290347:web:2f9f470fae7721bce73dae"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+let fs;
+try { fs = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+catch (e) { fs = initializeFirestore(fbApp, {}); }
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {})); }
+(function(){
+"use strict";
+// ---------- estado ----------
+const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios"];
+const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],ajustes:{}};
+let db=null, mode="cargando", loadedCount=0, citaFiltro="proximas", pagoMes=null, buscar="";
+const TIPOS=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Moto","Otro"];
+const METODOS=["Efectivo","Zelle","Transferencia bancaria","Tarjeta","Cheque","Otro"];
+
+// ---------- utilidades ----------
+const $=s=>document.querySelector(s);
+const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n)||0);
+const num=v=>{const n=parseFloat(String(v).replace(/[^0-9.\-]/g,""));return isNaN(n)?0:n};
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function toD(s){return new Date(s+"T00:00:00")}
+function dStr(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function addDays(s,n){const d=toD(s);d.setDate(d.getDate()+n);return dStr(d)}
+function addMonths(s,n){const d=toD(s);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return dStr(d)}
+function fDate(s,opt){if(!s)return"";try{return toD(s).toLocaleDateString("es-US",opt||{weekday:"short",day:"numeric",month:"short"})}catch(e){return s}}
+function fHora(h){if(!h)return"";const[a,b]=h.split(":");let H=+a;const ap=H>=12?"pm":"am";H=H%12||12;return H+":"+b+" "+ap}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+const byId=(col,id)=>S[col].find(x=>x.id===id);
+const cliNombre=id=>{const c=byId("clientes",id);return c?c.nombre:"Sin cliente"};
+function pagadoCita(id){return S.pagos.filter(p=>p.citaId===id).reduce((a,p)=>a+num(p.monto),0)}
+function saldoCita(c){if(c.estado!=="completada")return 0;return Math.max(0,num(c.precio)-pagadoCita(c.id))}
+function memActiva(cid){return S.membresias.find(m=>m.clienteId===cid&&m.estado==="activa")}
+function mesKey(s){return (s||"").slice(0,7)}
+function negocio(){return Object.assign({nombre:"AutoLuxuries Auto Detailing",telefono:"",cobro:"",firma:"¡Gracias por su preferencia!"},S.ajustes||{})}
+
+function toast(msg){const t=$("#toast");t.innerHTML='<div class="toast">'+esc(msg)+'</div>';clearTimeout(toast._t);toast._t=setTimeout(()=>t.innerHTML="",2400)}
+
+// ---------- base de datos (Firebase) ----------
+let unsubs=[];
+function newId(){return fsDoc(fsCol(fs,"clientes")).id}
+async function save(col,obj){
+  const o=Object.assign({},obj); if(!o.id)o.id=newId(); const id=o.id; delete o.id; o.actualizado=Date.now();
+  // no esperamos al servidor: así funciona sin señal y se sincroniza después
+  setDoc(fsDoc(fs,col,id),JSON.parse(JSON.stringify(o))).catch(handleErr);
+  return id;
+}
+async function removeDoc(col,id){deleteDoc(fsDoc(fs,col,id)).catch(handleErr)}
+async function saveAjustes(o){setDoc(fsDoc(fs,"ajustes","negocio"),o).catch(handleErr)}
+function handleErr(e){
+  const c=e&&e.code;
+  if(c==="permission-denied")toast("Sin permiso para guardar. Revisa las reglas de Firebase.");
+  else toast("No se pudo guardar. Intenta otra vez.");
+}
+function startData(){
+  unsubs.forEach(u=>u());unsubs=[];loadedCount=0;mode="cargando";render();
+  const timer=setTimeout(()=>{if(mode==="cargando"){mode="lento";render()}},10000);
+  COLS.forEach(col=>{
+    let first=true;
+    unsubs.push(fsSnap(fsCol(fs,col),{includeMetadataChanges:false},snap=>{
+      S[col]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+      if(first){first=false;loadedCount++;if(loadedCount>=COLS.length){mode="listo";clearTimeout(timer)}}
+      render();
+    },err=>{mode=err&&err.code==="permission-denied"?"permiso":"error";clearTimeout(timer);render()}));
+  });
+  unsubs.push(fsSnap(fsDoc(fs,"ajustes","negocio"),s=>{S.ajustes=s.exists()?s.data():{};render()},()=>{}));
+}
+function showLogin(on){
+  $("#login").classList.toggle("hidden",!on);$("#appwrap").classList.toggle("hidden",on);$("#tabsnav").classList.toggle("hidden",on);
+}
+async function init(){
+  try{await setPersistence(auth,browserLocalPersistence)}catch(e){}
+  onAuthStateChanged(auth,u=>{
+    if(!u){unsubs.forEach(x=>x());unsubs=[];COLS.forEach(c=>S[c]=[]);showLogin(true);return}
+    showLogin(false);startData();
+  });
+  $("#loginForm").addEventListener("submit",async e=>{
+    e.preventDefault();const em=$("#lg_e").value.trim(),pw=$("#lg_p").value;$("#lg_err").textContent="";
+    if(!em||!pw){$("#lg_err").textContent="Escribe tu correo y contraseña.";return}
+    $("#lg_btn").disabled=true;$("#lg_btn").textContent="Entrando…";
+    try{await signInWithEmailAndPassword(auth,em,pw)}
+    catch(err){const c=err&&err.code||"";$("#lg_err").textContent=c.includes("network")?"Sin conexión. Revisa tu internet.":c.includes("too-many")?"Demasiados intentos. Espera unos minutos.":c.includes("api-key")?"La configuración de Firebase no es válida.":"Correo o contraseña incorrectos."}
+    $("#lg_btn").disabled=false;$("#lg_btn").textContent="Entrar";
+  });
+  $("#lg_reset").addEventListener("click",async()=>{
+    const em=$("#lg_e").value.trim();if(!em){$("#lg_err").textContent="Escribe tu correo arriba y vuelve a tocar aquí.";return}
+    try{await sendPasswordResetEmail(auth,em);$("#lg_err").textContent="Te mandamos un correo para cambiar tu contraseña."}catch(e){$("#lg_err").textContent="No se pudo mandar el correo. Revisa que esté bien escrito."}
+  });
+}
+// ---------- respaldo ----------
+function exportar(){
+  const data={app:"AutoLuxuries",version:1,fecha:new Date().toISOString(),ajustes:S.ajustes};
+  COLS.forEach(c=>data[c]=S[c]);
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="autoluxuries-respaldo-"+today()+".json";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+  toast("Respaldo descargado");
+}
+async function importar(file){
+  let data;try{data=JSON.parse(await file.text())}catch(e){return toast("Ese archivo no es un respaldo válido.")}
+  let n=0;
+  for(const c of COLS){if(Array.isArray(data[c]))for(const r of data[c]){if(r&&r.id){await save(c,r);n++}}}
+  if(data.ajustes&&typeof data.ajustes==="object"&&Object.keys(data.ajustes).length)await saveAjustes(data.ajustes);
+  toast(n+" registros importados");
+}
+
+// ---------- iconos ----------
+const I={
+ home:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ cal:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+ users:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .8 3.2 2.6 3.6 5.4"/></svg>',
+ cash:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg>',
+ more:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+ doc:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',
+ star:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
+ user:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>'
+};
+const TABS=[["inicio","Inicio","home"],["citas","Citas","cal"],["clientes","Clientes","users"],["cobros","Cobros","cash"],["mas","Más","more"]];
+const SUBVIEWS={estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas"};
+
+function route(){const h=(location.hash||"").replace("#","");return h||"inicio"}
+function go(v){if(location.hash!=="#"+v)location.hash=v;else render();window.scrollTo(0,0)}
+window.addEventListener("hashchange",()=>{render();window.scrollTo(0,0)});
+
+// ---------- render ----------
+function render(){
+  const v=route(); const tab=SUBVIEWS[v]||v;
+  $("#tabs").innerHTML=TABS.map(([k,l,i])=>'<button type="button" data-act="go" data-id="'+k+'" class="'+(tab===k?"on":"")+'">'+I[i]+'<span>'+l+'</span></button>').join("");
+  const views={inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
+  let banner="";
+  if(mode==="lento")banner='<div class="banner">Sin conexión por ahora. Puedes seguir trabajando: lo que guardes se sube solo cuando vuelva la señal.</div>';
+  else if(mode==="permiso")banner='<div class="banner">Tu cuenta no tiene permiso para ver los datos. Revisa las reglas de Firestore.</div>';
+  else if(mode==="error")banner='<div class="banner">No se pudo conectar con tus datos. Cierra y vuelve a abrir la app.</div>';
+  $("#view").innerHTML=banner+(views[v]||vInicio)();
+}
+
+function citaRow(c,showDate){
+  const saldo=saldoCita(c);
+  const est=c.estado==="completada"?(saldo>0?'<span class="pill p-warn">Debe '+money(saldo)+'</span>':'<span class="pill p-ok">Pagada</span>'):c.estado==="cancelada"?'<span class="pill p-mut">Cancelada</span>':'<span class="pill p-info">Programada</span>';
+  return '<button type="button" class="row" data-act="verCita" data-id="'+c.id+'"><div class="when"><b>'+(showDate?esc(fDate(c.fecha,{day:"numeric"})):esc(fHora(c.hora)||"—"))+'</b><span>'+(showDate?esc(fDate(c.fecha,{month:"short"})):"")+'</span></div><div class="main"><span class="t">'+esc(cliNombre(c.clienteId))+'</span><span class="s">'+esc(c.servicio||"Servicio")+(c.vehiculo?" · "+esc(c.vehiculo):"")+(showDate&&c.hora?" · "+esc(fHora(c.hora)):"")+'</span></div><div class="r"><b>'+(c.usaMembresia?"Membresía":money(c.precio))+'</b>'+est+'</div></button>';
+}
+
+function vInicio(){
+  const t=today(), mk=mesKey(t);
+  const hoy=S.citas.filter(c=>c.fecha===t&&c.estado!=="cancelada").sort((a,b)=>(a.hora||"").localeCompare(b.hora||""));
+  const semFin=addDays(t,7);
+  const prox=S.citas.filter(c=>c.fecha>t&&c.fecha<=semFin&&c.estado==="programada").sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
+  const ingresos=S.pagos.filter(p=>mesKey(p.fecha)===mk).reduce((a,p)=>a+num(p.monto),0);
+  const porCobrar=S.citas.reduce((a,c)=>a+saldoCita(c),0);
+  const renov=S.membresias.filter(m=>m.estado==="activa"&&m.proxCobro&&m.proxCobro<=addDays(t,7)).sort((a,b)=>a.proxCobro.localeCompare(b.proxCobro));
+  const estAb=S.estimaciones.filter(e=>e.estado==="enviada"||e.estado==="borrador").length;
+  let h='<div class="section"><h1>'+esc(fDate(t,{weekday:"long",day:"numeric",month:"long"}).replace(/^./,m=>m.toUpperCase()))+'</h1></div>';
+  h+='<div class="tiles"><div class="tile gold"><span class="k">Cobrado este mes</span><span class="v">'+money(ingresos)+'</span></div><div class="tile"><span class="k">Por cobrar</span><span class="v" style="color:'+(porCobrar>0?"var(--warn)":"inherit")+'">'+money(porCobrar)+'</span></div><div class="tile"><span class="k">Citas hoy</span><span class="v">'+hoy.length+'</span></div><div class="tile"><span class="k">Próximos 7 días</span><span class="v">'+prox.length+'</span></div></div>';
+  h+='<div class="quick"><button type="button" data-act="newCita">'+I.cal+'Cita</button><button type="button" data-act="newCliente">'+I.user+'Cliente</button><button type="button" data-act="newEst">'+I.doc+'Cotización</button><button type="button" data-act="newPago">'+I.cash+'Pago</button></div>';
+  h+='<div class="section"><h2>Hoy <button type="button" class="lnk" data-act="go" data-id="citas">Ver citas</button></h2>'+(hoy.length?'<div class="list">'+hoy.map(c=>citaRow(c,false)).join("")+'</div>':'<div class="empty">No tienes citas hoy.<button type="button" class="btn sm pri" data-act="newCita">Agendar una cita</button></div>')+'</div>';
+  if(prox.length)h+='<div class="section"><h2>Esta semana</h2><div class="list">'+prox.slice(0,6).map(c=>citaRow(c,true)).join("")+'</div></div>';
+  const deben=S.citas.filter(c=>saldoCita(c)>0);
+  if(deben.length)h+='<div class="section"><h2>Pendientes de pago <button type="button" class="lnk" data-act="go" data-id="cobros">Cobros</button></h2><div class="list">'+deben.slice(0,5).map(c=>citaRow(c,true)).join("")+'</div></div>';
+  if(renov.length)h+='<div class="section"><h2>Membresías por renovar</h2><div class="list">'+renov.map(memRow).join("")+'</div></div>';
+  if(estAb)h+='<div class="section"><h2>Cotizaciones abiertas <button type="button" class="lnk" data-act="go" data-id="estimaciones">Ver '+estAb+'</button></h2></div>';
+  if(!S.clientes.length&&!S.citas.length&&mode!=="cargando")h+='<div class="empty"><b style="color:var(--ink)">Para empezar</b>1. Agrega tus servicios y precios.<br>2. Registra tus clientes.<br>3. Agenda tus citas y registra los pagos.<div class="btns"><button type="button" class="btn sm pri" data-act="go" data-id="servicios">Servicios y precios</button><button type="button" class="btn sm" data-act="newCliente">Nuevo cliente</button></div></div>';
+  return h;
+}
+
+function vCitas(){
+  const t=today();
+  const F={proximas:["Próximas",c=>c.fecha>=t&&c.estado==="programada"],hoy:["Hoy",c=>c.fecha===t],completadas:["Completadas",c=>c.estado==="completada"],canceladas:["Canceladas",c=>c.estado==="cancelada"],todas:["Todas",()=>true]};
+  let list=S.citas.filter(F[citaFiltro][1]);
+  const desc=citaFiltro==="completadas"||citaFiltro==="todas"||citaFiltro==="canceladas";
+  list.sort((a,b)=>{const x=(a.fecha||"")+(a.hora||""),y=(b.fecha||"")+(b.hora||"");return desc?y.localeCompare(x):x.localeCompare(y)});
+  let h='<div class="section"><h2><span style="font-size:22px">Citas</span><button type="button" class="btn sm pri" data-act="newCita">+ Nueva</button></h2><div class="chips">'+Object.keys(F).map(k=>'<button type="button" class="chip '+(citaFiltro===k?"on":"")+'" data-act="citaF" data-id="'+k+'">'+F[k][0]+'</button>').join("")+'</div></div>';
+  if(!list.length)return h+'<div class="empty">No hay citas en esta lista.</div>';
+  const groups={};list.forEach(c=>{(groups[c.fecha]=groups[c.fecha]||[]).push(c)});
+  Object.keys(groups).forEach(f=>{h+='<div class="day">'+(f===t?"Hoy · ":"")+esc(fDate(f,{weekday:"long",day:"numeric",month:"long"}))+'</div><div class="list">'+groups[f].map(c=>citaRow(c,false)).join("")+'</div>'});
+  return h;
+}
+
+function vClientes(){
+  const q=buscar.trim().toLowerCase();
+  let list=S.clientes.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
+  if(q)list=list.filter(c=>[c.nombre,c.telefono,c.email,(c.vehiculos||[]).map(v=>v.desc).join(" ")].join(" ").toLowerCase().includes(q));
+  let h='<div class="section"><h2><span style="font-size:22px">Clientes</span><button type="button" class="btn sm pri" data-act="newCliente">+ Nuevo</button></h2><input class="search" id="buscar" type="search" placeholder="Buscar por nombre, teléfono o vehículo" value="'+esc(buscar)+'"></div>';
+  if(!list.length)return h+'<div class="empty">'+(q?"Ningún cliente coincide.":"Todavía no tienes clientes guardados.")+'</div>';
+  h+='<div class="list">'+list.map(c=>{
+    const saldo=S.citas.filter(x=>x.clienteId===c.id).reduce((a,x)=>a+saldoCita(x),0);
+    const m=memActiva(c.id); const n=S.citas.filter(x=>x.clienteId===c.id&&x.estado==="completada").length;
+    return '<button type="button" class="row" data-act="verCliente" data-id="'+c.id+'"><div class="main"><span class="t">'+esc(c.nombre)+'</span><span class="s">'+esc(c.telefono||"Sin teléfono")+' · '+n+' servicio'+(n===1?"":"s")+'</span></div><div class="r">'+(m?'<span class="pill p-ok">Miembro</span>':"")+(saldo>0?'<span class="pill p-warn">Debe '+money(saldo)+'</span>':"")+'</div></button>'}).join("")+'</div>';
+  return h;
+}
+
+function vCobros(){
+  const t=today(); if(!pagoMes)pagoMes=mesKey(t);
+  const meses=[...new Set([mesKey(t),...S.pagos.map(p=>mesKey(p.fecha))])].filter(Boolean).sort().reverse();
+  const pagos=S.pagos.filter(p=>mesKey(p.fecha)===pagoMes).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const total=pagos.reduce((a,p)=>a+num(p.monto),0);
+  const porMetodo={};pagos.forEach(p=>porMetodo[p.metodo||"Otro"]=(porMetodo[p.metodo||"Otro"]||0)+num(p.monto));
+  const deben=S.citas.filter(c=>saldoCita(c)>0).sort((a,b)=>(a.fecha||"").localeCompare(b.fecha||""));
+  const porCobrar=deben.reduce((a,c)=>a+saldoCita(c),0);
+  let h='<div class="section"><h2><span style="font-size:22px">Cobros</span><button type="button" class="btn sm pri" data-act="newPago">+ Registrar pago</button></h2></div>';
+  h+='<div class="tiles"><div class="tile gold"><span class="k">Cobrado · '+esc(fDate(pagoMes+"-01",{month:"long"}))+'</span><span class="v">'+money(total)+'</span></div><div class="tile"><span class="k">Por cobrar</span><span class="v" style="color:'+(porCobrar>0?"var(--warn)":"inherit")+'">'+money(porCobrar)+'</span></div></div>';
+  h+='<div class="section"><h2>Pendientes de pago</h2>'+(deben.length?'<div class="list">'+deben.map(c=>citaRow(c,true)).join("")+'</div><p class="note">Toca una cita para copiar el mensaje de cobro y mandarlo desde tu teléfono o tu banco.</p>':'<div class="empty">Nadie te debe. Todo cobrado.</div>')+'</div>';
+  h+='<div class="section"><h2>Pagos recibidos</h2><div class="chips">'+meses.map(m=>'<button type="button" class="chip '+(m===pagoMes?"on":"")+'" data-act="pagoMes" data-id="'+m+'">'+esc(fDate(m+"-01",{month:"short",year:"numeric"}))+'</button>').join("")+'</div>';
+  if(Object.keys(porMetodo).length)h+='<div class="kv">'+Object.entries(porMetodo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div><span>'+esc(k)+'</span><span>'+money(v)+'</span></div>').join("")+'</div>';
+  h+=(pagos.length?'<div class="list">'+pagos.map(p=>'<button type="button" class="row" data-act="verPago" data-id="'+p.id+'"><div class="main"><span class="t">'+esc(cliNombre(p.clienteId))+'</span><span class="s">'+esc(fDate(p.fecha))+' · '+esc(p.metodo||"")+(p.concepto?" · "+esc(p.concepto):"")+'</span></div><div class="r"><b>'+money(p.monto)+'</b></div></button>').join("")+'</div>':'<div class="empty">No hay pagos este mes.</div>')+'</div>';
+  return h;
+}
+
+function vMas(){
+  const abiertas=S.estimaciones.filter(e=>e.estado==="borrador"||e.estado==="enviada").length;
+  const act=S.membresias.filter(m=>m.estado==="activa").length;
+  const item=(v,ic,t,s)=>'<button type="button" class="row" data-act="go" data-id="'+v+'"><div class="when" style="border:0;width:30px;padding:0">'+I[ic].replace("<svg",'<svg style="width:22px;height:22px;stroke:var(--gold-ink)"')+'</div><div class="main"><span class="t">'+t+'</span><span class="s">'+s+'</span></div><div class="r">›</div></button>';
+  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
+}
+
+const EST_PILL={borrador:'<span class="pill p-mut">Borrador</span>',enviada:'<span class="pill p-info">Enviada</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-bad">Rechazada</span>'};
+function estTotal(e){const sub=(e.items||[]).reduce((a,i)=>a+num(i.cant||1)*num(i.precio),0);return Math.max(0,sub-num(e.descuento))}
+function vEstimaciones(){
+  const list=S.estimaciones.slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  let h='<div class="section"><h2><span style="font-size:22px">Cotizaciones</span><button type="button" class="btn sm pri" data-act="newEst">+ Nueva</button></h2></div>';
+  if(!list.length)return h+'<div class="empty">Aún no tienes cotizaciones. Arma una con tus precios y cópiala para mandarla por mensaje.</div>';
+  return h+'<div class="list">'+list.map(e=>'<button type="button" class="row" data-act="verEst" data-id="'+e.id+'"><div class="main"><span class="t">'+esc(e.numero||"")+' · '+esc(cliNombre(e.clienteId))+'</span><span class="s">'+esc(fDate(e.fecha))+(e.vehiculo?" · "+esc(e.vehiculo):"")+'</span></div><div class="r"><b>'+money(estTotal(e))+'</b>'+(EST_PILL[e.estado]||"")+'</div></button>').join("")+'</div>';
+}
+
+const FREQ={mensual:["Mensual",1],trimestral:["Cada 3 meses",3],anual:["Anual",12]};
+function memRow(m){
+  const inc=num(m.incluidos)||0, us=num(m.usados)||0;
+  const venc=m.proxCobro&&m.proxCobro<today();
+  const pill=m.estado!=="activa"?'<span class="pill p-mut">'+(m.estado==="pausada"?"Pausada":"Cancelada")+'</span>':venc?'<span class="pill p-bad">Vencida</span>':'<span class="pill p-ok">Activa</span>';
+  return '<button type="button" class="row" data-act="verMem" data-id="'+m.id+'"><div class="main"><span class="t">'+esc(cliNombre(m.clienteId))+'</span><span class="s">'+esc(m.planNombre||"Plan")+' · '+us+' de '+inc+' servicios usados · cobro '+esc(fDate(m.proxCobro,{day:"numeric",month:"short"}))+'</span></div><div class="r"><b>'+money(m.precio)+'</b>'+pill+'</div></button>';
+}
+function vMembresias(){
+  let h='<div class="section"><h2><span style="font-size:22px">Membresías</span><button type="button" class="btn sm pri" data-act="newMem">+ Inscribir</button></h2></div>';
+  h+='<div class="section"><h2>Planes <button type="button" class="lnk" data-act="newPlan">+ Nuevo plan</button></h2>'+(S.planes.length?'<div class="list">'+S.planes.map(p=>{const n=S.membresias.filter(m=>m.planId===p.id&&m.estado==="activa").length;return '<button type="button" class="row" data-act="editPlan" data-id="'+p.id+'"><div class="main"><span class="t">'+esc(p.nombre)+'</span><span class="s">'+esc((FREQ[p.frecuencia]||["",0])[0])+' · '+esc(p.incluidos||0)+' servicio'+(num(p.incluidos)===1?"":"s")+' por periodo'+(p.descripcion?" · "+esc(p.descripcion):"")+'</span></div><div class="r"><b>'+money(p.precio)+'</b><span class="s note">'+n+' miembro'+(n===1?"":"s")+'</span></div></button>'}).join("")+'</div>':'<div class="empty">Crea un plan, por ejemplo "Lavado mensual": $X al mes con 1 detallado incluido.<button type="button" class="btn sm pri" data-act="newPlan">Crear plan</button></div>')+'</div>';
+  const mems=S.membresias.slice().sort((a,b)=>(a.estado==="activa"?0:1)-(b.estado==="activa"?0:1)||(a.proxCobro||"").localeCompare(b.proxCobro||""));
+  h+='<div class="section"><h2>Miembros</h2>'+(mems.length?'<div class="list">'+mems.map(memRow).join("")+'</div>':'<div class="empty">Todavía no hay clientes inscritos.</div>')+'</div>';
+  return h;
+}
+
+function vServicios(){
+  let h='<div class="section"><h2><span style="font-size:22px">Servicios y precios</span><button type="button" class="btn sm pri" data-act="newServ">+ Nuevo</button></h2><p class="note" style="margin:0">Estos precios se llenan solos al agendar citas y armar cotizaciones.</p></div>';
+  if(!S.servicios.length)return h+'<div class="empty">Agrega tus servicios uno por uno, o empieza con una lista común y ponle tus precios.<button type="button" class="btn sm pri" data-act="seedServ">Agregar lista común</button></div>';
+  const cats={};S.servicios.forEach(s=>{(cats[s.categoria||"Otro"]=cats[s.categoria||"Otro"]||[]).push(s)});
+  Object.keys(cats).forEach(k=>{h+='<div class="day">'+esc(k)+'</div><div class="list">'+cats[k].sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(s=>'<button type="button" class="row" data-act="editServ" data-id="'+s.id+'"><div class="main"><span class="t">'+esc(s.nombre)+'</span>'+(s.duracion?'<span class="s">'+esc(s.duracion)+'</span>':"")+'</div><div class="r"><b>'+(num(s.precio)?money(s.precio):'<span class="pill p-warn">Sin precio</span>')+'</b></div></button>').join("")+'</div>'});
+  return h;
+}
+
+function vAjustes(){
+  const n=negocio();
+  return '<div class="section"><h1>Ajustes del negocio</h1><p class="note" style="margin:0">Esto aparece en las cotizaciones y mensajes de cobro que copias.</p></div><form data-form="ajustes" class="section"><div class="f"><label for="a_nombre">Nombre del negocio</label><input id="a_nombre" name="nombre" value="'+esc(n.nombre)+'"></div><div class="f"><label for="a_tel">Teléfono</label><input id="a_tel" name="telefono" type="tel" value="'+esc(n.telefono)+'"></div><div class="f"><label for="a_cobro">Cómo te pagan</label><textarea id="a_cobro" name="cobro" placeholder="Ej: Zelle al (503) 000-0000 a nombre de ...">'+esc(n.cobro)+'</textarea></div><div class="f"><label for="a_firma">Mensaje final</label><input id="a_firma" name="firma" value="'+esc(n.firma)+'"></div><div class="btns"><button class="btn pri" type="submit">Guardar ajustes</button></div></form><div class="section"><h2>Respaldo de tus datos</h2><p class="note" style="margin:0">Descarga una copia de todos tus clientes, citas, pagos y cotizaciones. Guárdala en Archivos o en tu correo.</p><div class="btns"><button type="button" class="btn dark" data-act="exportar">Descargar respaldo</button><label class="btn" for="imp_file" style="display:inline-block">Importar respaldo</label><input id="imp_file" type="file" accept=".json,application/json" class="hidden"></div></div><div class="section"><h2>Cuenta</h2><p class="note" style="margin:0">'+esc((auth.currentUser&&auth.currentUser.email)||"")+'</p><div class="btns"><button type="button" class="btn danger" data-act="salir">Cerrar sesión</button></div></div>';
+}
+
+// ---------- modales ----------
+function openSheet(title,body,foot,formName){
+  const inner='<div class="hd"><h3>'+esc(title)+'</h3><button type="button" class="x" data-act="close">Cerrar</button></div><div class="bd">'+body+'</div>'+(foot?'<div class="ft">'+foot+'</div>':"");
+  $("#modal").innerHTML='<div class="ov" data-act="ovclose">'+(formName?'<form class="sheet" data-form="'+formName+'" novalidate>'+inner+'</form>':'<div class="sheet">'+inner+'</div>')+'</div>';
+}
+function closeSheet(){$("#modal").innerHTML=""}
+function askConfirm(msg,yes){
+  return new Promise(res=>{
+    const d=document.createElement("div");d.className="ov";d.style.zIndex=30;d.style.alignItems="center";
+    d.innerHTML='<div class="sheet" style="border-radius:16px;max-width:360px;margin:16px"><div class="bd"><b>'+esc(msg)+'</b></div><div class="ft"><button type="button" class="btn" data-c="0">No</button><button type="button" class="btn danger" data-c="1">'+esc(yes||"Sí, borrar")+'</button></div></div>';
+    d.addEventListener("click",e=>{const b=e.target.closest("[data-c]");if(b||e.target===d){d.remove();res(!!(b&&b.dataset.c==="1"))}});
+    document.body.appendChild(d);
+  });
+}
+function copyText(txt){
+  const ok=()=>toast("Copiado. Pégalo en tu mensaje.");
+  const fallback=()=>{openSheet("Copia este texto",'<p class="note" style="margin:0">Mantén presionado el texto para copiarlo.</p><textarea class="copybox" readonly>'+esc(txt)+'</textarea>');setTimeout(()=>{const t=document.querySelector(".copybox");if(t){t.focus();t.select()}},50)};
+  try{navigator.clipboard.writeText(txt).then(ok,fallback)}catch(e){fallback()}
+}
+const opt=(arr,sel)=>arr.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return '<option value="'+esc(v)+'"'+(String(v)===String(sel)?" selected":"")+'>'+esc(l)+'</option>'}).join("");
+const clienteOpts=sel=>'<option value="">Elige un cliente…</option>'+opt(S.clientes.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(c=>[c.id,c.nombre]),sel)+'<option value="__nuevo">+ Cliente nuevo</option>';
+const servOpts=sel=>'<option value="">Elige un servicio…</option>'+opt(S.servicios.map(s=>[s.nombre,s.nombre+(num(s.precio)?" · "+money(s.precio):"")]),sel)+'<option value="__otro">Otro (escribir)</option>';
+function fd(form){const o={};new FormData(form).forEach((v,k)=>o[k]=typeof v==="string"?v.trim():v);return o}
+
+// --- cliente ---
+function vehRow(v){v=v||{};return '<div class="vehrow"><select name="vtipo" aria-label="Tipo">'+opt(TIPOS,v.tipo||"Auto")+'</select><input name="vdesc" placeholder="Año, marca, modelo, color" value="'+esc(v.desc)+'" aria-label="Vehículo"><button type="button" class="del" data-act="delRow" aria-label="Quitar">×</button></div>'}
+function formCliente(id){
+  const c=id?byId("clientes",id):{};
+  openSheet(id?"Editar cliente":"Nuevo cliente",
+   '<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="c_nom">Nombre</label><input id="c_nom" name="nombre" required value="'+esc(c.nombre)+'"></div><div class="g2"><div class="f"><label for="c_tel">Teléfono</label><input id="c_tel" name="telefono" type="tel" value="'+esc(c.telefono)+'"></div><div class="f"><label for="c_em">Email</label><input id="c_em" name="email" type="email" value="'+esc(c.email)+'"></div></div><div class="f"><label for="c_dir">Dirección</label><input id="c_dir" name="direccion" value="'+esc(c.direccion)+'"></div><div class="f"><label>Vehículos, botes o RV</label><div id="vehs" style="display:flex;flex-direction:column;gap:6px">'+((c.vehiculos&&c.vehiculos.length?c.vehiculos:[{}]).map(vehRow).join(""))+'</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="addVeh">+ Otro vehículo</button></div><div class="f"><label for="c_not">Notas</label><textarea id="c_not" name="notas" placeholder="Código de la puerta, preferencias, cómo te conoció…">'+esc(c.notas)+'</textarea></div>',
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cliente</button>',"cliente");
+}
+async function submitCliente(f){
+  const o=fd(f); if(!o.nombre)return toast("Escribe el nombre del cliente.");
+  const tipos=[...f.querySelectorAll('[name="vtipo"]')].map(x=>x.value), descs=[...f.querySelectorAll('[name="vdesc"]')].map(x=>x.value.trim());
+  const vehiculos=descs.map((d,i)=>({tipo:tipos[i],desc:d})).filter(v=>v.desc);
+  const prev=o.id?byId("clientes",o.id):{};
+  const rec={id:o.id||undefined,nombre:o.nombre,telefono:o.telefono,email:o.email,direccion:o.direccion,notas:o.notas,vehiculos,creado:(prev&&prev.creado)||today()};
+  try{const nid=await save("clientes",rec);closeSheet();toast("Cliente guardado");verCliente(nid)}catch(e){}
+}
+function verCliente(id){
+  const c=byId("clientes",id); if(!c)return closeSheet();
+  const citas=S.citas.filter(x=>x.clienteId===id).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const pagos=S.pagos.filter(p=>p.clienteId===id);
+  const total=pagos.reduce((a,p)=>a+num(p.monto),0), saldo=citas.reduce((a,x)=>a+saldoCita(x),0);
+  const m=memActiva(id);
+  let b='<div class="kv">'+(c.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(c.telefono.replace(/[^0-9+]/g,""))+'">'+esc(c.telefono)+'</a></span></div>':"")+(c.email?'<div><span>Email</span><span>'+esc(c.email)+'</span></div>':"")+(c.direccion?'<div><span>Dirección</span><span>'+esc(c.direccion)+'</span></div>':"")+'<div><span>Total pagado</span><span>'+money(total)+'</span></div><div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"inherit")+'">'+money(saldo)+'</span></div>'+(m?'<div><span>Membresía</span><span>'+esc(m.planNombre)+' · '+(num(m.usados))+'/'+num(m.incluidos)+'</span></div>':"")+'</div>';
+  if(c.vehiculos&&c.vehiculos.length)b+='<div class="section"><h2>Vehículos</h2><div class="kv">'+c.vehiculos.map(v=>'<div><span>'+esc(v.tipo)+'</span><span>'+esc(v.desc)+'</span></div>').join("")+'</div></div>';
+  if(c.notas)b+='<div class="section"><h2>Notas</h2><p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p></div>';
+  b+='<div class="section"><h2>Historial</h2>'+(citas.length?'<div class="list">'+citas.map(x=>citaRow(x,true)).join("")+'</div>':'<div class="empty">Sin citas todavía.</div>')+'</div>';
+  openSheet(c.nombre,b,'<button type="button" class="btn danger" data-act="delCliente" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editCliente" data-id="'+id+'">Editar</button><button type="button" class="btn" data-act="newEstFor" data-id="'+id+'">Cotizar</button><button type="button" class="btn pri" data-act="newCitaFor" data-id="'+id+'">Nueva cita</button>');
+}
+
+// --- cita ---
+function formCita(id,pre){
+  const c=id?byId("citas",id):Object.assign({fecha:today(),hora:"09:00",estado:"programada"},pre||{});
+  const cli=c.clienteId?byId("clientes",c.clienteId):null;
+  const inCat=!c.servicio||S.servicios.some(s=>s.nombre===c.servicio);
+  const vehs=cli&&cli.vehiculos?cli.vehiculos:[];
+  const m=c.clienteId?memActiva(c.clienteId):null;
+  openSheet(id?"Editar cita":"Nueva cita",
+   '<input type="hidden" name="id" value="'+esc(id||"")+'"><input type="hidden" name="estId" value="'+esc(c.estId||"")+'"><div class="f"><label for="ci_cli">Cliente</label><select id="ci_cli" name="clienteId" data-chg="citaCli">'+clienteOpts(c.clienteId)+'</select></div><div id="ci_new" class="g2" style="display:none"><div class="f"><label for="ci_nn">Nombre</label><input id="ci_nn" name="nuevoNombre"></div><div class="f"><label for="ci_nt">Teléfono</label><input id="ci_nt" name="nuevoTel" type="tel"></div></div>'+
+   '<div class="g2"><div class="f"><label for="ci_tipo">Tipo</label><select id="ci_tipo" name="tipo">'+opt(TIPOS,c.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="ci_veh">Vehículo</label><input id="ci_veh" name="vehiculo" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(c.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"><datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
+   '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"></div>'+
+   '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
+   '<div class="f"><label for="ci_dir">Dirección del servicio</label><input id="ci_dir" name="direccion" value="'+esc(c.direccion||(cli&&cli.direccion)||"")+'"></div>'+
+   '<div class="g2"><div class="f"><label for="ci_p">Precio</label><input id="ci_p" name="precio" inputmode="decimal" value="'+esc(c.precio!=null?c.precio:"")+'" placeholder="0.00"></div><div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div></div>'+
+   '<label id="ci_memwrap" style="display:'+(m?"flex":"none")+';gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="usaMembresia" '+(c.usaMembresia?"checked":"")+'> Cubierto por su membresía'+(m?' ('+esc(m.planNombre)+', '+Math.max(0,num(m.incluidos)-num(m.usados))+' disponibles)':"")+'</label>'+
+   '<div class="f"><label for="ci_n">Notas</label><textarea id="ci_n" name="notas">'+esc(c.notas)+'</textarea></div>',
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cita</button>',"cita");
+}
+async function submitCita(f){
+  const o=fd(f); let clienteId=o.clienteId;
+  if(clienteId==="__nuevo"){if(!o.nuevoNombre)return toast("Escribe el nombre del cliente nuevo.");
+    try{clienteId=await save("clientes",{nombre:o.nuevoNombre,telefono:o.nuevoTel,direccion:o.direccion,vehiculos:o.vehiculo?[{tipo:o.tipo,desc:o.vehiculo}]:[],creado:today()})}catch(e){return}}
+  if(!clienteId)return toast("Elige un cliente.");
+  if(!o.fecha)return toast("Elige la fecha.");
+  const servicio=o.servSel==="__otro"||!o.servSel?o.servTxt:o.servSel;
+  const prev=o.id?byId("citas",o.id):null;
+  const rec={id:o.id||undefined,clienteId,tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precio:o.usaMembresia?0:num(o.precio),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
+  // guardar vehículo en el cliente si es nuevo
+  const cli=byId("clientes",clienteId);
+  try{
+    if(cli&&o.vehiculo&&!(cli.vehiculos||[]).some(v=>v.desc.toLowerCase()===o.vehiculo.toLowerCase())){await save("clientes",Object.assign({},cli,{vehiculos:(cli.vehiculos||[]).concat([{tipo:o.tipo,desc:o.vehiculo}])}))}
+    const nid=await save("citas",rec);
+    await contarMembresia(nid,rec);
+    if(o.estId){const e=byId("estimaciones",o.estId);if(e&&e.estado!=="aceptada")await save("estimaciones",Object.assign({},e,{estado:"aceptada"}))}
+    closeSheet();toast("Cita guardada");
+  }catch(e){}
+}
+async function contarMembresia(id,c){
+  if(c.estado==="completada"&&c.usaMembresia&&!c.membresiaContada){
+    const m=memActiva(c.clienteId);
+    if(m){await save("membresias",Object.assign({},m,{usados:num(m.usados)+1}));await save("citas",Object.assign({},c,{id,membresiaContada:true}))}
+  }
+}
+function mensajeCobro(c){
+  const n=negocio(), cli=byId("clientes",c.clienteId)||{}, saldo=saldoCita(c);
+  return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\nServicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":"")+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+}
+function verCita(id){
+  const c=byId("citas",id); if(!c)return closeSheet();
+  const cli=byId("clientes",c.clienteId)||{}, pag=pagadoCita(id), saldo=saldoCita(c);
+  const pagos=S.pagos.filter(p=>p.citaId===id);
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>'+(c.direccion?'<div><span>Dirección</span><span>'+esc(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(c.precio))+'</span></div><div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
+  if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
+  if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
+  let acts='';
+  if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button>';
+  if(saldo>0)acts+='<button type="button" class="btn" data-act="copiarCobro" data-id="'+id+'">Copiar mensaje de cobro</button><button type="button" class="btn pri" data-act="pagoCita" data-id="'+id+'">Registrar pago</button>';
+  else if(c.estado==="programada"&&!c.usaMembresia)acts+='<button type="button" class="btn" data-act="pagoCita" data-id="'+id+'">Registrar depósito</button>';
+  b+='<div class="btns">'+acts+'</div>';
+  openSheet("Cita",b,'<button type="button" class="btn danger" data-act="delCita" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editCita" data-id="'+id+'">Editar</button>');
+}
+
+// --- pago ---
+function formPago(pre){
+  const p=Object.assign({fecha:today(),metodo:"Zelle"},pre||{});
+  const citasCli=p.clienteId?S.citas.filter(c=>c.clienteId===p.clienteId&&c.estado!=="cancelada"):[];
+  openSheet(p.id?"Editar pago":"Registrar pago",
+   '<input type="hidden" name="id" value="'+esc(p.id||"")+'"><input type="hidden" name="memId" value="'+esc(p.memId||"")+'"><div class="f"><label for="pa_cli">Cliente</label><select id="pa_cli" name="clienteId" data-chg="pagoCli">'+clienteOpts(p.clienteId).replace('<option value="__nuevo">+ Cliente nuevo</option>',"")+'</select></div><div class="f"><label for="pa_cita">Por cuál cita (opcional)</label><select id="pa_cita" name="citaId"><option value="">Ninguna</option>'+opt(citasCli.sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")).map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]),p.citaId)+'</select></div><div class="g2"><div class="f"><label for="pa_m">Monto</label><input id="pa_m" name="monto" inputmode="decimal" value="'+esc(p.monto!=null?p.monto:"")+'" placeholder="0.00"></div><div class="f"><label for="pa_f">Fecha</label><input id="pa_f" name="fecha" type="date" value="'+esc(p.fecha)+'"></div></div><div class="f"><label for="pa_me">Método</label><select id="pa_me" name="metodo">'+opt(METODOS,p.metodo)+'</select></div><div class="f"><label for="pa_c">Concepto</label><input id="pa_c" name="concepto" value="'+esc(p.concepto)+'" placeholder="Detallado completo, depósito, membresía…"></div>',
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar pago</button>',"pago");
+}
+async function submitPago(f){
+  const o=fd(f); if(!o.clienteId)return toast("Elige un cliente."); if(!num(o.monto))return toast("Escribe el monto.");
+  try{await save("pagos",{id:o.id||undefined,clienteId:o.clienteId,citaId:o.citaId,memId:o.memId,monto:num(o.monto),fecha:o.fecha||today(),metodo:o.metodo,concepto:o.concepto});closeSheet();toast("Pago registrado")}catch(e){}
+}
+function verPago(id){
+  const p=byId("pagos",id); if(!p)return;
+  const c=p.citaId?byId("citas",p.citaId):null;
+  openSheet("Pago",'<div class="kv"><div><span>Cliente</span><span>'+esc(cliNombre(p.clienteId))+'</span></div><div><span>Monto</span><span>'+money(p.monto)+'</span></div><div><span>Fecha</span><span>'+esc(fDate(p.fecha,{day:"numeric",month:"long",year:"numeric"}))+'</span></div><div><span>Método</span><span>'+esc(p.metodo)+'</span></div>'+(p.concepto?'<div><span>Concepto</span><span>'+esc(p.concepto)+'</span></div>':"")+(c?'<div><span>Cita</span><span>'+esc(fDate(c.fecha))+' · '+esc(c.servicio||"")+'</span></div>':"")+'</div>',
+   '<button type="button" class="btn danger" data-act="delPago" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editPago" data-id="'+id+'">Editar</button>');
+}
+
+// --- cotización ---
+function itemRow(it){it=it||{};const inCat=!it.desc||S.servicios.some(s=>s.nombre===it.desc);return '<div class="itemrow"><input name="idesc" list="serv_dl" placeholder="Servicio" value="'+esc(it.desc)+'" aria-label="Servicio" data-chg="itemDesc"><input name="icant" inputmode="decimal" value="'+esc(it.cant||1)+'" aria-label="Cantidad" data-inp="estTot"><input name="iprecio" inputmode="decimal" placeholder="Precio" value="'+esc(it.precio!=null?it.precio:"")+'" aria-label="Precio" data-inp="estTot"><button type="button" class="del" data-act="delRow" aria-label="Quitar">×</button></div>'}
+function formEst(id,pre){
+  const e=id?byId("estimaciones",id):Object.assign({fecha:today(),estado:"borrador",items:[{}],validez:"15 días"},pre||{});
+  const cli=e.clienteId?byId("clientes",e.clienteId):null; const vehs=cli&&cli.vehiculos?cli.vehiculos:[];
+  openSheet(id?"Editar cotización":"Nueva cotización",
+   '<input type="hidden" name="id" value="'+esc(id||"")+'"><datalist id="serv_dl">'+S.servicios.map(s=>'<option value="'+esc(s.nombre)+'"></option>').join("")+'</datalist><div class="f"><label for="es_cli">Cliente</label><select id="es_cli" name="clienteId" data-chg="estCli">'+clienteOpts(e.clienteId)+'</select></div><div id="es_new" class="g2" style="display:none"><div class="f"><label for="es_nn">Nombre</label><input id="es_nn" name="nuevoNombre"></div><div class="f"><label for="es_nt">Teléfono</label><input id="es_nt" name="nuevoTel" type="tel"></div></div><div class="g2"><div class="f"><label for="es_tipo">Tipo</label><select id="es_tipo" name="tipo">'+opt(TIPOS,e.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="es_veh">Vehículo</label><input id="es_veh" name="vehiculo" value="'+esc(e.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"></div></div>'+
+   '<div class="f"><label>Servicios</label><div style="display:grid;grid-template-columns:1fr 64px 92px 34px;gap:6px;font-size:12px;color:var(--muted);font-weight:700"><span>Descripción</span><span>Cant.</span><span>Precio</span><span></span></div><div id="items" style="display:flex;flex-direction:column;gap:6px">'+(e.items&&e.items.length?e.items:[{}]).map(itemRow).join("")+'</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="addItem">+ Agregar línea</button></div>'+
+   '<div class="g2"><div class="f"><label for="es_d">Descuento ($)</label><input id="es_d" name="descuento" inputmode="decimal" value="'+esc(e.descuento||"")+'" data-inp="estTot"></div><div class="f"><label for="es_v">Válida por</label><input id="es_v" name="validez" value="'+esc(e.validez)+'"></div></div><div class="total"><span>Total</span><span id="es_total">'+money(estTotal(e))+'</span></div>'+
+   '<div class="g2"><div class="f"><label for="es_f">Fecha</label><input id="es_f" name="fecha" type="date" value="'+esc(e.fecha)+'"></div><div class="f"><label for="es_e">Estado</label><select id="es_e" name="estado">'+opt([["borrador","Borrador"],["enviada","Enviada"],["aceptada","Aceptada"],["rechazada","Rechazada"]],e.estado)+'</select></div></div><div class="f"><label for="es_n">Notas para el cliente</label><textarea id="es_n" name="notas" placeholder="Qué incluye, condiciones, tiempo estimado…">'+esc(e.notas)+'</textarea></div>',
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cotización</button>',"est");
+}
+function readItems(f){const d=[...f.querySelectorAll('[name="idesc"]')].map(x=>x.value.trim()),c=[...f.querySelectorAll('[name="icant"]')].map(x=>num(x.value)||1),p=[...f.querySelectorAll('[name="iprecio"]')].map(x=>num(x.value));return d.map((x,i)=>({desc:x,cant:c[i],precio:p[i]})).filter(i=>i.desc||i.precio)}
+async function submitEst(f){
+  const o=fd(f); let clienteId=o.clienteId;
+  if(clienteId==="__nuevo"){if(!o.nuevoNombre)return toast("Escribe el nombre del cliente nuevo.");try{clienteId=await save("clientes",{nombre:o.nuevoNombre,telefono:o.nuevoTel,vehiculos:o.vehiculo?[{tipo:o.tipo,desc:o.vehiculo}]:[],creado:today()})}catch(e){return}}
+  if(!clienteId)return toast("Elige un cliente.");
+  const items=readItems(f); if(!items.length)return toast("Agrega al menos un servicio.");
+  const prev=o.id?byId("estimaciones",o.id):null;
+  const maxN=S.estimaciones.reduce((a,e)=>Math.max(a,parseInt(String(e.numero||"").replace(/\D/g,""))||1000),1000);
+  const rec={id:o.id||undefined,numero:prev?prev.numero:"C-"+(maxN+1),clienteId,tipo:o.tipo,vehiculo:o.vehiculo,items,descuento:num(o.descuento),validez:o.validez,fecha:o.fecha||today(),estado:o.estado,notas:o.notas};
+  try{const nid=await save("estimaciones",rec);closeSheet();toast("Cotización guardada");verEst(nid)}catch(e){}
+}
+function textoEst(e){
+  const n=negocio(), cli=byId("clientes",e.clienteId)||{};
+  let t=n.nombre+"\nCotización "+(e.numero||"")+" · "+fDate(e.fecha,{day:"numeric",month:"long",year:"numeric"})+"\n\nCliente: "+(cli.nombre||"")+(e.vehiculo?"\n"+(e.tipo||"Vehículo")+": "+e.vehiculo:"")+"\n\n";
+  (e.items||[]).forEach(i=>{t+="• "+i.desc+(num(i.cant)>1?" x"+i.cant:"")+" — "+money(num(i.cant||1)*num(i.precio))+"\n"});
+  if(num(e.descuento))t+="Descuento: -"+money(e.descuento)+"\n";
+  t+="\nTOTAL: "+money(estTotal(e))+(e.validez?"\nVálida por "+e.validez:"")+(e.notas?"\n\n"+e.notas:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  return t;
+}
+function verEst(id){
+  const e=byId("estimaciones",id); if(!e)return closeSheet();
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cliNombre(e.clienteId))+'</span></div><div><span>Fecha</span><span>'+esc(fDate(e.fecha))+'</span></div>'+(e.vehiculo?'<div><span>'+esc(e.tipo||"Vehículo")+'</span><span>'+esc(e.vehiculo)+'</span></div>':"")+'<div><span>Estado</span><span>'+(EST_PILL[e.estado]||"")+'</span></div></div><div class="kv">'+(e.items||[]).map(i=>'<div><span>'+esc(i.desc)+(num(i.cant)>1?" × "+esc(i.cant):"")+'</span><span>'+money(num(i.cant||1)*num(i.precio))+'</span></div>').join("")+(num(e.descuento)?'<div><span>Descuento</span><span>-'+money(e.descuento)+'</span></div>':"")+'</div><div class="total"><span>Total</span><span>'+money(estTotal(e))+'</span></div>'+(e.notas?'<p style="margin:0;white-space:pre-wrap">'+esc(e.notas)+'</p>':"");
+  b+='<div class="btns"><button type="button" class="btn" data-act="copiarEst" data-id="'+id+'">Copiar para enviar</button>'+(e.estado==="borrador"?'<button type="button" class="btn" data-act="estEnviada" data-id="'+id+'">Marcar enviada</button>':"")+'<button type="button" class="btn pri" data-act="estACita" data-id="'+id+'">Convertir en cita</button></div>';
+  openSheet("Cotización "+(e.numero||""),b,'<button type="button" class="btn danger" data-act="delEst" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editEst" data-id="'+id+'">Editar</button>');
+}
+
+// --- servicios ---
+function formServ(id){
+  const s=id?byId("servicios",id):{categoria:"Auto"};
+  openSheet(id?"Editar servicio":"Nuevo servicio",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="sv_n">Nombre</label><input id="sv_n" name="nombre" value="'+esc(s.nombre)+'" placeholder="Detallado completo"></div><div class="g2"><div class="f"><label for="sv_p">Precio</label><input id="sv_p" name="precio" inputmode="decimal" value="'+esc(s.precio||"")+'"></div><div class="f"><label for="sv_c">Para</label><select id="sv_c" name="categoria">'+opt(TIPOS,s.categoria)+'</select></div></div><div class="f"><label for="sv_d">Duración aproximada</label><input id="sv_d" name="duracion" value="'+esc(s.duracion)+'" placeholder="3 horas"></div>',
+   (id?'<button type="button" class="btn danger" data-act="delServ" data-id="'+id+'">Borrar</button>':"")+'<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar</button>',"serv");
+}
+async function submitServ(f){const o=fd(f);if(!o.nombre)return toast("Escribe el nombre del servicio.");try{await save("servicios",{id:o.id||undefined,nombre:o.nombre,precio:num(o.precio),categoria:o.categoria,duracion:o.duracion});closeSheet();toast("Servicio guardado")}catch(e){}}
+async function seedServ(){
+  const L=[["Lavado exterior a mano","Auto"],["Detallado interior","Auto"],["Detallado completo (interior y exterior)","Auto"],["Encerado / sellador de pintura","Auto"],["Corrección de pintura","Auto"],["Recubrimiento cerámico","Auto"],["Limpieza de motor","Auto"],["Restauración de faros","Auto"],["Detallado completo SUV / camioneta","SUV / Camioneta"],["Lavado y encerado de bote","Bote"],["Detallado interior de bote","Bote"],["Lavado exterior de RV","RV / Casa rodante"],["Detallado interior de RV","RV / Casa rodante"]];
+  try{for(const[n,c]of L)await save("servicios",{nombre:n,precio:0,categoria:c,duracion:""});toast("Lista agregada. Ponle precio a cada uno.")}catch(e){}
+}
+
+// --- membresías ---
+function formPlan(id){
+  const p=id?byId("planes",id):{frecuencia:"mensual",incluidos:1};
+  openSheet(id?"Editar plan":"Nuevo plan",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="pl_n">Nombre del plan</label><input id="pl_n" name="nombre" value="'+esc(p.nombre)+'" placeholder="Club mensual"></div><div class="g2"><div class="f"><label for="pl_p">Precio</label><input id="pl_p" name="precio" inputmode="decimal" value="'+esc(p.precio||"")+'"></div><div class="f"><label for="pl_f">Se cobra</label><select id="pl_f" name="frecuencia">'+opt(Object.keys(FREQ).map(k=>[k,FREQ[k][0]]),p.frecuencia)+'</select></div></div><div class="f"><label for="pl_i">Servicios incluidos por periodo</label><input id="pl_i" name="incluidos" inputmode="numeric" value="'+esc(p.incluidos)+'"></div><div class="f"><label for="pl_d">Qué incluye</label><input id="pl_d" name="descripcion" value="'+esc(p.descripcion)+'" placeholder="1 lavado completo al mes + 10% en extras"></div>',
+   (id?'<button type="button" class="btn danger" data-act="delPlan" data-id="'+id+'">Borrar</button>':"")+'<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar plan</button>',"plan");
+}
+async function submitPlan(f){const o=fd(f);if(!o.nombre)return toast("Ponle nombre al plan.");try{await save("planes",{id:o.id||undefined,nombre:o.nombre,precio:num(o.precio),frecuencia:o.frecuencia,incluidos:num(o.incluidos)||1,descripcion:o.descripcion});closeSheet();toast("Plan guardado")}catch(e){}}
+function formMem(id,pre){
+  if(!S.planes.length&&!id){toast("Primero crea un plan.");return formPlan()}
+  const m=id?byId("membresias",id):Object.assign({inicio:today(),estado:"activa",usados:0},pre||{});
+  openSheet(id?"Editar membresía":"Inscribir cliente",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="me_cli">Cliente</label><select id="me_cli" name="clienteId">'+clienteOpts(m.clienteId).replace('<option value="__nuevo">+ Cliente nuevo</option>',"")+'</select></div><div class="f"><label for="me_pl">Plan</label><select id="me_pl" name="planId">'+opt(S.planes.map(p=>[p.id,p.nombre+" · "+money(p.precio)+" "+(FREQ[p.frecuencia]||[""])[0].toLowerCase()]),m.planId)+'</select></div><div class="g2"><div class="f"><label for="me_i">Inicio</label><input id="me_i" name="inicio" type="date" value="'+esc(m.inicio)+'"></div><div class="f"><label for="me_e">Estado</label><select id="me_e" name="estado">'+opt([["activa","Activa"],["pausada","Pausada"],["cancelada","Cancelada"]],m.estado)+'</select></div></div>'+(id?'<div class="g2"><div class="f"><label for="me_u">Servicios usados este periodo</label><input id="me_u" name="usados" inputmode="numeric" value="'+esc(m.usados)+'"></div><div class="f"><label for="me_px">Próximo cobro</label><input id="me_px" name="proxCobro" type="date" value="'+esc(m.proxCobro)+'"></div></div>':'<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="cobrarYa" checked> Registrar el primer pago ahora</label><div class="f"><label for="me_mt">Método del pago</label><select id="me_mt" name="metodo">'+opt(METODOS,"Zelle")+'</select></div>'),
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar</button>',"mem");
+}
+async function submitMem(f){
+  const o=fd(f); if(!o.clienteId)return toast("Elige un cliente."); const p=byId("planes",o.planId); if(!p)return toast("Elige un plan.");
+  const prev=o.id?byId("membresias",o.id):null; const meses=(FREQ[p.frecuencia]||["",1])[1];
+  const rec={id:o.id||undefined,clienteId:o.clienteId,planId:p.id,planNombre:p.nombre,precio:num(p.precio),frecuencia:p.frecuencia,incluidos:num(p.incluidos),usados:prev?num(o.usados):0,inicio:o.inicio||today(),proxCobro:prev?(o.proxCobro||prev.proxCobro):addMonths(o.inicio||today(),meses),estado:o.estado};
+  try{const nid=await save("membresias",rec);if(!prev&&o.cobrarYa)await save("pagos",{clienteId:o.clienteId,memId:nid,monto:num(p.precio),fecha:o.inicio||today(),metodo:o.metodo,concepto:"Membresía "+p.nombre});closeSheet();toast("Membresía guardada")}catch(e){}
+}
+function verMem(id){
+  const m=byId("membresias",id); if(!m)return closeSheet();
+  const inc=num(m.incluidos)||0, us=num(m.usados)||0, pct=inc?Math.min(100,us/inc*100):0;
+  const pagos=S.pagos.filter(p=>p.memId===id).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cliNombre(m.clienteId))+'</span></div><div><span>Plan</span><span>'+esc(m.planNombre)+'</span></div><div><span>Precio</span><span>'+money(m.precio)+' · '+esc((FREQ[m.frecuencia]||[""])[0])+'</span></div><div><span>Miembro desde</span><span>'+esc(fDate(m.inicio,{day:"numeric",month:"short",year:"numeric"}))+'</span></div><div><span>Próximo cobro</span><span style="color:'+(m.proxCobro<today()?"var(--bad)":"inherit")+'">'+esc(fDate(m.proxCobro,{day:"numeric",month:"long"}))+'</span></div></div><div class="section"><h2>Servicios usados <span>'+us+' de '+inc+'</span></h2><div class="bar"><i style="width:'+pct+'%"></i></div></div>';
+  if(pagos.length)b+='<div class="section"><h2>Pagos de la membresía</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
+  if(m.estado==="activa")b+='<div class="btns"><button type="button" class="btn" data-act="memUso" data-id="'+id+'">+1 servicio usado</button><button type="button" class="btn" data-act="memCopiar" data-id="'+id+'">Copiar recordatorio</button><button type="button" class="btn pri" data-act="memRenovar" data-id="'+id+'">Renovar y cobrar</button></div>';
+  openSheet("Membresía",b,'<button type="button" class="btn danger" data-act="delMem" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editMem" data-id="'+id+'">Editar</button>');
+}
+function formRenovar(id){
+  const m=byId("membresias",id);
+  openSheet("Renovar membresía",'<input type="hidden" name="id" value="'+esc(id)+'"><p class="note" style="margin:0">Registra el pago de '+esc(cliNombre(m.clienteId))+', reinicia los servicios usados y mueve el próximo cobro.</p><div class="g2"><div class="f"><label for="rn_m">Monto</label><input id="rn_m" name="monto" inputmode="decimal" value="'+esc(m.precio)+'"></div><div class="f"><label for="rn_me">Método</label><select id="rn_me" name="metodo">'+opt(METODOS,"Zelle")+'</select></div></div><div class="f"><label for="rn_f">Fecha del pago</label><input id="rn_f" name="fecha" type="date" value="'+today()+'"></div>',
+   '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Renovar</button>',"renovar");
+}
+async function submitRenovar(f){
+  const o=fd(f),m=byId("membresias",o.id); if(!m)return closeSheet();
+  const meses=(FREQ[m.frecuencia]||["",1])[1]; let prox=m.proxCobro||today(); prox=addMonths(prox,meses); while(prox<=today())prox=addMonths(prox,meses);
+  try{await save("pagos",{clienteId:m.clienteId,memId:m.id,monto:num(o.monto),fecha:o.fecha||today(),metodo:o.metodo,concepto:"Membresía "+m.planNombre});await save("membresias",Object.assign({},m,{usados:0,proxCobro:prox}));closeSheet();toast("Membresía renovada")}catch(e){}
+}
+
+// ---------- acciones ----------
+const ACT={
+  go:id=>go(id), close:closeSheet,
+  ovclose:(id,el,e)=>{if(e.target===el)closeSheet()},
+  newCita:()=>formCita(), newCitaFor:id=>formCita(null,{clienteId:id}), editCita:id=>formCita(id), verCita,
+  newCliente:()=>formCliente(), editCliente:id=>formCliente(id), verCliente,
+  newPago:()=>formPago(), editPago:id=>formPago(byId("pagos",id)), verPago,
+  pagoCita:id=>{const c=byId("citas",id);formPago({clienteId:c.clienteId,citaId:id,monto:saldoCita(c)||"",concepto:c.servicio})},
+  newEst:()=>formEst(), newEstFor:id=>formEst(null,{clienteId:id}), editEst:id=>formEst(id), verEst,
+  newServ:()=>formServ(), editServ:id=>formServ(id), seedServ,
+  newPlan:()=>formPlan(), editPlan:id=>formPlan(id),
+  newMem:()=>formMem(), editMem:id=>formMem(id), verMem, memRenovar:id=>formRenovar(id),
+  exportar, salir:async()=>{if(await askConfirm("¿Cerrar sesión en este aparato?","Sí, cerrar")){signOut(auth)}},
+  citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
+  addVeh:()=>{$("#vehs").insertAdjacentHTML("beforeend",vehRow())},
+  addItem:()=>{$("#items").insertAdjacentHTML("beforeend",itemRow());estTot()},
+  delRow:(id,el)=>{const r=el.parentElement;const box=r.parentElement;if(box.children.length>1)r.remove();else r.querySelectorAll("input").forEach(i=>i.value="");estTot()},
+  completar:async id=>{const c=byId("citas",id);const rec=Object.assign({},c,{estado:"completada"});try{await save("citas",rec);await contarMembresia(id,rec);toast("Cita completada");setTimeout(()=>verCita(id),50)}catch(e){}},
+  copiarCobro:id=>copyText(mensajeCobro(byId("citas",id))),
+  copiarEst:id=>copyText(textoEst(byId("estimaciones",id))),
+  estEnviada:async id=>{try{await save("estimaciones",Object.assign({},byId("estimaciones",id),{estado:"enviada"}));setTimeout(()=>verEst(id),50)}catch(e){}},
+  estACita:id=>{const e=byId("estimaciones",id);formCita(null,{clienteId:e.clienteId,tipo:e.tipo,vehiculo:e.vehiculo,servicio:(e.items||[]).map(i=>i.desc).join(" + "),precio:estTotal(e),estId:id,notas:e.notas})},
+  memUso:async id=>{const m=byId("membresias",id);try{await save("membresias",Object.assign({},m,{usados:num(m.usados)+1}));setTimeout(()=>verMem(id),50)}catch(e){}},
+  memCopiar:id=>{const m=byId("membresias",id),n=negocio(),c=byId("clientes",m.clienteId)||{};copyText("Hola "+(c.nombre||"").split(" ")[0]+", le recordamos que su membresía "+m.planNombre+" de "+n.nombre+" se renueva el "+fDate(m.proxCobro,{day:"numeric",month:"long"})+" por "+money(m.precio)+"."+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:""))},
+  delCliente:async id=>{if(await askConfirm("¿Borrar este cliente? Sus citas y pagos se quedan guardados.")){try{await removeDoc("clientes",id);closeSheet();toast("Cliente borrado")}catch(e){}}},
+  delCita:async id=>{if(await askConfirm("¿Borrar esta cita?")){try{await removeDoc("citas",id);closeSheet();toast("Cita borrada")}catch(e){}}},
+  delPago:async id=>{if(await askConfirm("¿Borrar este pago?")){try{await removeDoc("pagos",id);closeSheet();toast("Pago borrado")}catch(e){}}},
+  delEst:async id=>{if(await askConfirm("¿Borrar esta cotización?")){try{await removeDoc("estimaciones",id);closeSheet();toast("Cotización borrada")}catch(e){}}},
+  delServ:async id=>{if(await askConfirm("¿Borrar este servicio?")){try{await removeDoc("servicios",id);closeSheet()}catch(e){}}},
+  delPlan:async id=>{if(await askConfirm("¿Borrar este plan? Los miembros actuales no se borran.")){try{await removeDoc("planes",id);closeSheet()}catch(e){}}},
+  delMem:async id=>{if(await askConfirm("¿Borrar esta membresía?")){try{await removeDoc("membresias",id);closeSheet()}catch(e){}}}
+};
+function estTot(){const f=document.querySelector('form[data-form="est"]');if(!f)return;const t=$("#es_total");if(t)t.textContent=money(estTotal({items:readItems(f),descuento:num(f.descuento.value)}))}
+const CHG={
+  citaCli:el=>{const f=el.form,v=el.value;$("#ci_new").style.display=v==="__nuevo"?"grid":"none";const c=byId("clientes",v);if(c){const vehs=c.vehiculos||[];$("#ci_vl").innerHTML=vehs.map(x=>'<option value="'+esc(x.desc)+'"></option>').join("");if(vehs[0]){f.vehiculo.value=vehs[0].desc;f.tipo.value=vehs[0].tipo}if(c.direccion)f.direccion.value=c.direccion}const m=c?memActiva(c.id):null;$("#ci_memwrap").style.display=m?"flex":"none"},
+  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio},
+  estCli:el=>{$("#es_new").style.display=el.value==="__nuevo"?"grid":"none";const c=byId("clientes",el.value);if(c&&c.vehiculos&&c.vehiculos[0]){el.form.vehiculo.value=c.vehiculos[0].desc;el.form.tipo.value=c.vehiculos[0].tipo}},
+  pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
+  itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
+};
+const SUB={cliente:submitCliente,cita:submitCita,pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
+  ajustes:async f=>{const o=fd(f);try{await saveAjustes({nombre:o.nombre||"AutoLuxuries Auto Detailing",telefono:o.telefono,cobro:o.cobro,firma:o.firma});toast("Ajustes guardados")}catch(e){}}};
+
+document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;const fn=ACT[el.dataset.act];if(fn){if(el.dataset.act!=="ovclose")e.preventDefault();fn(el.dataset.id,el,e)}});
+document.addEventListener("change",e=>{if(e.target.id==="imp_file"&&e.target.files[0]){const f=e.target.files[0];askConfirm("¿Importar este respaldo? Los registros con el mismo código se reemplazan.","Sí, importar").then(ok=>{if(ok)importar(f)});e.target.value="";return}const el=e.target.closest("[data-chg]");if(el&&CHG[el.dataset.chg])CHG[el.dataset.chg](el)});
+document.addEventListener("input",e=>{if(e.target.id==="buscar"){buscar=e.target.value;const pos=e.target.selectionStart;render();const b=$("#buscar");if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(_){}}}else if(e.target.dataset.inp==="estTot")estTot()});
+document.addEventListener("submit",e=>{const f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();const fn=SUB[f.dataset.form];if(fn)fn(f)});
+
+init();
+})();
+</script>
+</body>
+</html>
