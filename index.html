@@ -296,10 +296,18 @@ function exportar(){
 }
 async function importar(file){
   let data;try{data=JSON.parse(await file.text())}catch(e){return toast("Ese archivo no es un respaldo válido.")}
-  let n=0;
-  for(const c of COLS){if(Array.isArray(data[c]))for(const r of data[c]){if(r&&r.id){await save(c,r);n++}}}
-  if(data.ajustes&&typeof data.ajustes==="object"&&Object.keys(data.ajustes).length)await saveAjustes(data.ajustes);
-  toast(n+" registros importados");
+  const tareas=[];
+  for(const c of COLS){if(Array.isArray(data[c]))for(const r of data[c]){if(r&&r.id){const o=Object.assign({},r);const id=o.id;delete o.id;o.actualizado=Date.now();tareas.push(()=>setDoc(fsDoc(fs,c,id),JSON.parse(JSON.stringify(o))))}}}
+  if(data.ajustes&&typeof data.ajustes==="object"&&Object.keys(data.ajustes).length)tareas.push(()=>setDoc(fsDoc(fs,"ajustes","negocio"),Object.assign({},S.ajustes,data.ajustes)));
+  let ok=0,mal=0,ultimo="";
+  toast("Importando "+tareas.length+" registros… no cierres la app.");
+  for(let i=0;i<tareas.length;i+=25){
+    const r=await Promise.allSettled(tareas.slice(i,i+25).map(f=>f()));
+    r.forEach(x=>{if(x.status==="fulfilled")ok++;else{mal++;ultimo=(x.reason&&x.reason.code)||""}});
+    toast("Importando… "+(ok+mal)+" de "+tareas.length);
+  }
+  if(mal){openSheet("La importación no terminó bien",'<p style="margin:0">Se guardaron <b>'+ok+'</b> registros y fallaron <b>'+mal+'</b>.</p><p class="note" style="margin:0">'+(ultimo==="permission-denied"?"Firebase no dio permiso. Revisa que las reglas de Firestore estén publicadas y que hayas entrado con tu correo.":"Revisa tu conexión a internet e intenta importar otra vez. No se duplica nada.")+'</p>')}
+  else toast("Listo: "+ok+" registros guardados en tu cuenta");
 }
 
 // ---------- iconos ----------
