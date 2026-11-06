@@ -175,8 +175,8 @@ if ("serviceWorker" in navigator) { window.addEventListener("load", () => naviga
 (function(){
 "use strict";
 // ---------- estado ----------
-const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios","solicitudes"];
-const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],solicitudes:[],ajustes:{}};
+const COLS=["clientes","citas","estimaciones","pagos","planes","membresias","servicios","solicitudes","verificaciones"];
+const S={clientes:[],citas:[],estimaciones:[],pagos:[],planes:[],membresias:[],servicios:[],solicitudes:[],verificaciones:[],ajustes:{}};
 let ultimoError="";
 let db=null, mode="cargando", loadedCount=0, citaFiltro="proximas", pagoMes=null, buscar="";
 const TIPOS=["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante","Moto","Otro"];
@@ -323,7 +323,7 @@ const I={
  user:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>'
 };
 const TABS=[["inicio","Inicio","home"],["citas","Citas","cal"],["clientes","Clientes","users"],["cobros","Cobros","cash"],["mas","Más","more"]];
-const SUBVIEWS={solicitudes:"inicio",estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas"};
+const SUBVIEWS={verificaciones:"mas",solicitudes:"inicio",estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas"};
 
 function route(){const h=(location.hash||"").replace("#","");return h||"inicio"}
 function go(v){if(location.hash!=="#"+v)location.hash=v;else render();window.scrollTo(0,0)}
@@ -333,7 +333,7 @@ window.addEventListener("hashchange",()=>{render();window.scrollTo(0,0)});
 function render(){
   const v=route(); const tab=SUBVIEWS[v]||v;
   $("#tabs").innerHTML=TABS.map(([k,l,i])=>'<button type="button" data-act="go" data-id="'+k+'" class="'+(tab===k?"on":"")+'">'+I[i]+'<span>'+l+'</span></button>').join("");
-  const views={solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
+  const views={verificaciones:vVerificaciones,solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes};
   let banner="";
   if(mode==="lento")banner='<div class="banner">Sin conexión por ahora. Puedes seguir trabajando: lo que guardes se sube solo cuando vuelva la señal.</div>';
   else if(mode==="permiso")banner='<div class="banner">Firebase no da permiso para ver tus datos. Revisa que las reglas de Firestore estén publicadas con tu correo. Entraste como: '+esc((auth.currentUser&&auth.currentUser.email)||"?")+'<br><small>'+esc(ultimoError)+'</small></div>';
@@ -360,6 +360,8 @@ function vInicio(){
   const estAb=S.estimaciones.filter(e=>e.estado==="enviada"||e.estado==="borrador").length;
   let h='<div class="section"><h1>'+esc(fDate(t,{weekday:"long",day:"numeric",month:"long"}).replace(/^./,m=>m.toUpperCase()))+'</h1></div>';
   const nuevas=S.solicitudes.filter(x=>x.estado==="nueva").sort((a,b)=>(b.creado||0)-(a.creado||0));
+  const vNuevas=S.verificaciones.filter(x=>x.estado==="nueva"), vVence=S.verificaciones.filter(x=>x.estado==="verificado"&&x.reverificarEl&&x.reverificarEl<=addDays(t,14));
+  if(vNuevas.length||vVence.length)h+='<div class="section"><h2>Planes de trabajo <button type="button" class="lnk" data-act="go" data-id="verificaciones">Ver</button></h2><div class="list">'+vNuevas.map(verRow).join("")+vVence.map(verRow).join("")+'</div></div>';
   if(nuevas.length)h+='<div class="section"><h2>Solicitudes nuevas <span class="pill p-bad">'+nuevas.length+'</span><button type="button" class="lnk" data-act="go" data-id="solicitudes">Ver todas</button></h2><div class="list">'+nuevas.slice(0,5).map(solRow).join("")+'</div></div>';
   h+='<div class="tiles"><div class="tile gold"><span class="k">Cobrado este mes</span><span class="v">'+money(ingresos)+'</span></div><div class="tile"><span class="k">Por cobrar</span><span class="v" style="color:'+(porCobrar>0?"var(--warn)":"inherit")+'">'+money(porCobrar)+'</span></div><div class="tile"><span class="k">Citas hoy</span><span class="v">'+hoy.length+'</span></div><div class="tile"><span class="k">Próximos 7 días</span><span class="v">'+prox.length+'</span></div></div>';
   h+='<div class="quick"><button type="button" data-act="newCita">'+I.cal+'Cita</button><button type="button" data-act="newCliente">'+I.user+'Cliente</button><button type="button" data-act="newEst">'+I.doc+'Cotización</button><button type="button" data-act="newPago">'+I.cash+'Pago</button></div>';
@@ -420,7 +422,7 @@ function vMas(){
   const abiertas=S.estimaciones.filter(e=>e.estado==="borrador"||e.estado==="enviada").length;
   const act=S.membresias.filter(m=>m.estado==="activa").length;
   const item=(v,ic,t,s)=>'<button type="button" class="row" data-act="go" data-id="'+v+'"><div class="when" style="border:0;width:30px;padding:0">'+I[ic].replace("<svg",'<svg style="width:22px;height:22px;stroke:var(--gold-ink)"')+'</div><div class="main"><span class="t">'+t+'</span><span class="s">'+s+'</span></div><div class="r">›</div></button>';
-  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("solicitudes","cal","Solicitudes de clientes",S.solicitudes.filter(x=>x.estado==="nueva").length+" nueva"+(S.solicitudes.filter(x=>x.estado==="nueva").length===1?"":"s")+" · desde tu sitio web")+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
+  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("solicitudes","cal","Solicitudes de clientes",S.solicitudes.filter(x=>x.estado==="nueva").length+" nueva"+(S.solicitudes.filter(x=>x.estado==="nueva").length===1?"":"s")+" · desde tu sitio web")+item("verificaciones","star","Planes de trabajo (verificación)",S.verificaciones.filter(x=>x.estado==="nueva").length+" por revisar · "+S.verificaciones.filter(x=>x.estado==="verificado").length+" verificados")+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
 }
 
 const EST_PILL={borrador:'<span class="pill p-mut">Borrador</span>',enviada:'<span class="pill p-info">Enviada</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-bad">Rechazada</span>'};
@@ -724,12 +726,66 @@ function msgConfirm(x){
   return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(x.service||x.servicio||"")+"\nAddress: "+(x.direccion||"")+"\n\nThank you! "+(n.telefono?"\n"+n.telefono:"");
 }
 
+// --- verificación de planes de trabajo ---
+const WORK_PLANS={"driver-clean":["Driver Clean","$120/mes"],"driver-care":["Driver Care","$130/mes"],"fleet-care":["Fleet Care 3 a 5 vehículos","$380/mes por vehículo"],"fleet-care-6":["Fleet Care 6+ vehículos","$340/mes por vehículo"]};
+function planKey(txt){const t=String(txt||"").toLowerCase();if(t.includes("6"))return "fleet-care-6";if(t.includes("fleet"))return "fleet-care";if(t.includes("care"))return "driver-care";if(t.includes("clean"))return "driver-clean";return ""}
+const enrollUrl=k=>"https://www.autoluxydetail.com/work-plan-enroll.html#"+k;
+const VER_PILL={nueva:'<span class="pill p-bad">Por revisar</span>',verificado:'<span class="pill p-ok">Verificado</span>',rechazada:'<span class="pill p-mut">Rechazada</span>'};
+function verRow(x){
+  const vence=x.estado==="verificado"&&x.reverificarEl&&x.reverificarEl<=addDays(today(),14);
+  return '<button type="button" class="row" data-act="verVer" data-id="'+x.id+'"><div class="main"><span class="t">'+esc(x.nombre)+'</span><span class="s">'+esc(x.tipoTrabajo||"")+' · '+esc(x.plan||"")+' · '+esc(x.numVehiculos||1)+' vehículo'+(num(x.numVehiculos)===1?"":"s")+(x.verificadoEl?' · verificado '+esc(fDate(x.verificadoEl,{day:"numeric",month:"short"})):"")+'</span></div><div class="r">'+(vence?'<span class="pill p-warn">Reverificar '+esc(fDate(x.reverificarEl,{day:"numeric",month:"short"}))+'</span>':(VER_PILL[x.estado]||""))+'</div></button>';
+}
+function vVerificaciones(){
+  const L=S.verificaciones.slice().sort((a,b)=>(a.estado==="nueva"?0:1)-(b.estado==="nueva"?0:1)||(b.creado||0)-(a.creado||0));
+  return '<div class="section"><h1>Planes de trabajo</h1><p class="note" style="margin:0">Solicitudes de la página Work-Vehicle Plans. Revisa la prueba, apruébala o recházala: la prueba se borra y solo queda "verificado" con la fecha. Se vuelve a verificar cada 6 meses.</p></div>'+(L.length?'<div class="list">'+L.map(verRow).join("")+'</div>':'<div class="empty">Todavía no llegan solicitudes de planes de trabajo.</div>');
+}
+function verVer(id){
+  const x=byId("verificaciones",id);if(!x)return closeSheet();
+  const tel=x.telefono?'<a class="tel" href="tel:'+esc(String(x.telefono).replace(/[^0-9+]/g,""))+'">'+esc(x.telefono)+'</a>':"—";
+  let b='<div class="kv"><div><span>Nombre</span><span>'+esc(x.nombre)+'</span></div><div><span>Teléfono</span><span>'+tel+'</span></div><div><span>Email</span><span>'+esc(x.email||"—")+'</span></div><div><span>Trabajo</span><span>'+esc(x.tipoTrabajo||"")+' · '+esc(x.plataforma||"")+'</span></div><div><span>Plan</span><span>'+esc(x.plan||"")+'</span></div><div><span>Vehículos</span><span>'+esc(x.numVehiculos||1)+'</span></div><div><span>Ciudad</span><span>'+esc(x.ciudad||"")+'</span></div><div><span>Estado</span><span>'+(VER_PILL[x.estado]||"")+'</span></div>'+(x.verificadoEl?'<div><span>Verificado el</span><span>'+esc(fDate(x.verificadoEl,{day:"numeric",month:"long",year:"numeric"}))+'</span></div><div><span>Volver a verificar</span><span>'+esc(fDate(x.reverificarEl,{day:"numeric",month:"long",year:"numeric"}))+'</span></div>':"")+'</div>';
+  if(x.vehiculos)b+='<div class="section"><h2>Vehículos</h2><p style="margin:0;white-space:pre-wrap">'+esc(x.vehiculos)+'</p></div>';
+  if(x.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(x.notas)+'</p>';
+  const arch=Array.isArray(x.archivos)?x.archivos:[];
+  if(arch.length){
+    b+='<div class="section"><h2>Prueba ('+arch.length+')</h2><p class="note" style="margin:0">Revisa que no muestre números de cuenta ni ganancias. Se borra al aprobar o rechazar.</p>'+arch.map((a,i)=>String(a.tipo).startsWith("image/")?'<img src="'+esc(a.data)+'" alt="Prueba '+(i+1)+'" style="max-width:100%;border-radius:12px;border:1px solid var(--line)">':'<button type="button" class="btn" data-act="verPdf" data-id="'+id+'|'+i+'">Abrir PDF: '+esc(a.nombre||"archivo")+'</button>').join("")+'</div>';
+  }else if(x.estado==="nueva")b+='<p class="note" style="margin:0">Esta solicitud no trae prueba. Pídesela por mensaje.</p>';
+  if(x.estado==="nueva"){
+    const k=planKey(x.plan);
+    b+='<div class="f"><label for="vv_plan">Plan a enviar</label><select id="vv_plan">'+opt(Object.keys(WORK_PLANS).map(q=>[q,WORK_PLANS[q][0]+" · "+WORK_PLANS[q][1]]),k||"driver-clean")+'</select></div><div class="btns"><button type="button" class="btn pri" data-act="verAprobar" data-id="'+id+'">Aprobar y borrar prueba</button><button type="button" class="btn danger" data-act="verRechazar" data-id="'+id+'">Rechazar y borrar prueba</button></div>';
+  }else if(x.estado==="verificado"){
+    b+='<div class="btns"><button type="button" class="btn pri" data-act="verCopiarLink" data-id="'+id+'">Copiar mensaje con enlace del plan</button><button type="button" class="btn" data-act="verPedirPrueba" data-id="'+id+'">Pedir nueva prueba (cada 6 meses)</button></div>';
+  }
+  openSheet("Plan de trabajo",b,'<button type="button" class="btn danger" data-act="delVer" data-id="'+id+'">Borrar</button>');
+}
+function sinArchivos(x){const o=Object.assign({},x);delete o.archivos;return o}
+async function verAprobar(id){
+  const x=byId("verificaciones",id);if(!x)return;
+  const k=($("#vv_plan")||{}).value||planKey(x.plan)||"driver-clean";
+  let c=clientePorTel(x.telefono);
+  if(!c){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.ciudad||"",vehiculos:[],notas:"Plan de trabajo verificado el "+today()+" ("+(x.tipoTrabajo||"")+", "+(x.plataforma||"")+").",creado:today()});c={id:cid}}
+  else await save("clientes",Object.assign({},c,{notas:((c.notas||"")+"\nPlan de trabajo verificado el "+today()+".").trim()}));
+  const rec=Object.assign(sinArchivos(x),{estado:"verificado",planEnviado:k,verificadoEl:today(),reverificarEl:addMonths(today(),6),clienteId:c.id});
+  try{await setDoc(fsDoc(fs,"verificaciones",id),JSON.parse(JSON.stringify(Object.assign({},rec,{id:undefined}))));toast("Verificado. La prueba se borró.");setTimeout(()=>verVer(id),80)}catch(e){handleErr(e)}
+}
+async function verRechazar(id){
+  const x=byId("verificaciones",id);if(!x)return;
+  if(!(await askConfirm("¿Rechazar esta solicitud? La prueba se borra.","Sí, rechazar")))return;
+  try{await setDoc(fsDoc(fs,"verificaciones",id),JSON.parse(JSON.stringify(Object.assign(sinArchivos(x),{id:undefined,estado:"rechazada",revisadoEl:today()}))));closeSheet();toast("Rechazada. La prueba se borró.")}catch(e){handleErr(e)}
+}
+function msgPlan(x){const k=x.planEnviado||planKey(x.plan)||"driver-clean";const first=(x.nombre||"").split(" ")[0];return "Hi "+first+", you're verified for the Autoluxuries Work-Vehicle Plan ("+WORK_PLANS[k][0]+"). Enroll here: "+enrollUrl(k)+"\n\nThe plan is prepaid monthly by card, on a fixed day and time. Once you enroll we'll text you to set your schedule.\n\nThank you!\nAutoluxuries Auto Detailing · 360-859-6559"}
+function msgPrueba(x){const first=(x.nombre||"").split(" ")[0];return "Hi "+first+", it's time to renew the verification for your Autoluxuries Work-Vehicle Plan (every 6 months). Please send a new proof here: https://www.autoluxydetail.com/work-plans.html#apply\n\nThank you!\nAutoluxuries Auto Detailing · 360-859-6559"}
+
 // ---------- acciones ----------
 const ACT={
   go:id=>go(id), close:closeSheet,
   ovclose:(id,el,e)=>{if(e.target===el)closeSheet()},
   bloquearDia:async()=>{const d=$("#d_dia").value;if(!d)return toast("Elige el día que quieres bloquear.");const L=bloqueados();if(!L.includes(d))L.push(d);await saveAjustes(Object.assign({},S.ajustes,{bloqueados:L}));toast("Día bloqueado")},
   desbloquearDia:async d=>{await saveAjustes(Object.assign({},S.ajustes,{bloqueados:bloqueados().filter(x=>x!==d)}));toast("Día disponible otra vez")},
+  verVer, verAprobar, verRechazar,
+  verCopiarLink:id=>copyText(msgPlan(byId("verificaciones",id))),
+  verPedirPrueba:id=>copyText(msgPrueba(byId("verificaciones",id))),
+  verPdf:ref=>{const [id,i]=ref.split("|");const x=byId("verificaciones",id);const a=x&&x.archivos&&x.archivos[+i];if(!a)return;try{const bin=atob(a.data.split(",")[1]);const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);const url=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));window.open(url,"_blank")}catch(e){toast("No se pudo abrir el PDF.")}},
+  delVer:async id=>{if(await askConfirm("¿Borrar esta solicitud por completo?")){await removeDoc("verificaciones",id);closeSheet()}},
   verSol, solAceptar, solRechazar:async id=>{const x=byId("solicitudes",id);if(await askConfirm("¿Rechazar esta solicitud?","Sí, rechazar")){await save("solicitudes",Object.assign({},x,{estado:"rechazada"}));closeSheet();toast("Solicitud rechazada")}},
   solCopiar:id=>copyText(msgConfirm(byId("solicitudes",id))),
   delSol:async id=>{if(await askConfirm("¿Borrar esta solicitud?")){await removeDoc("solicitudes",id);closeSheet()}},

@@ -16,6 +16,17 @@ service cloud.firestore {
     match /ocupado/{id} {
       allow read: if true;
     }
+    // La página Work-Vehicle Plans solo puede MANDAR solicitudes de verificación (no verlas)
+    match /verificaciones/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['nombre','telefono','email','tipoTrabajo','plataforma','plan','numVehiculos','vehiculos','ciudad','notas','estado','creado','archivos'])
+        && request.resource.data.estado == 'nueva'
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 80
+        && request.resource.data.telefono is string && request.resource.data.telefono.size() <= 25
+        && request.resource.data.email is string && request.resource.data.email.size() <= 100
+        && request.resource.data.vehiculos is string && request.resource.data.vehiculos.size() <= 1500
+        && request.resource.data.notas is string && request.resource.data.notas.size() <= 800
+        && request.resource.data.archivos is list && request.resource.data.archivos.size() >= 1 && request.resource.data.archivos.size() <= 3;
+    }
     // La página para agendar solo puede MANDAR solicitudes nuevas (no verlas ni cambiarlas)
     match /solicitudes/{id} {
       allow create: if request.resource.data.keys().hasOnly(['nombre','telefono','email','direccion','tipo','vehiculo','servicio','fecha','hora','notas','idioma','estado','creado'])
