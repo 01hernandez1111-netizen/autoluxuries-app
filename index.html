@@ -287,6 +287,55 @@ function syncOcupado(){
   Object.keys(ocupadoActual).forEach(f=>{if(!nuevo[f])deleteDoc(fsDoc(fs,"ocupado",f)).catch(()=>{})});
 }
 
+
+// ---------- lista oficial de servicios (precios del sitio web) ----------
+const X_INT="Extra charges apply for excessive dirt, pet hair, and stains that need extraction on carpets or seats.";
+const X_EXT="Extra charges apply for excessive dirt and heavy moss, mold or algae buildup on the exterior.";
+const X_WATER="Final price depends on length, size and condition. Heavy oxidation, mold, mildew, hard water spots, bird droppings or heavy stains are quoted separately, always confirmed before we start.";
+const FULL_D="Complete inside-and-out detail. Exterior: foam pre-wash and hand wash, decontamination, wheels, tires and rims, streak-free glass. Interior: full vacuum and wipe-down, plastic and trim restoration, windows and odor elimination.";
+const INT_D="Deep vacuum of carpets, seats and trunk, cleaning and restoration of plastic surfaces, streak-free windows and odor elimination.";
+const EXT_D="Foam pre-wash and hand wash, wheels and tires, glass, and a protective finish for lasting shine.";
+const CATALOGO_WEB=[
+ ["full-car","Full Detail – Car / Sedan",235,"Auto",false,FULL_D+" "+X_INT+" "+X_EXT],
+ ["full-suv","Full Detail – SUV",285,"SUV / Camioneta",false,FULL_D+" "+X_INT+" "+X_EXT],
+ ["full-truck","Full Detail – Truck",320,"Pickup",false,FULL_D+" "+X_INT+" "+X_EXT],
+ ["int-car","Interior Detail – Car / Sedan",135,"Auto",false,INT_D+" "+X_INT],
+ ["int-suv","Interior Detail – SUV",165,"SUV / Camioneta",false,INT_D+" "+X_INT],
+ ["int-truck","Interior Detail – Truck",165,"Pickup",false,INT_D+" "+X_INT],
+ ["ext-car","Exterior Detail – Car / Sedan",95,"Auto",false,EXT_D+" "+X_EXT],
+ ["ext-suv","Exterior Detail – SUV",125,"SUV / Camioneta",false,EXT_D+" "+X_EXT],
+ ["ext-truck","Exterior Detail – Large Truck",145,"Pickup",false,EXT_D+" "+X_EXT],
+ ["paint","Paint Correction",350,"Otro",true,"Machine polish to remove swirl marks, light scratches and scuffs, restoring depth, clarity and gloss. Results vary with defect depth. Price depends on vehicle size and paint condition. Ideal before a ceramic coating."],
+ ["ceramic","Ceramic Coating",950,"Otro",true,"Durable protective layer against sun, rain and road contaminants, with a deep glass-like gloss and easier washing. Price depends on vehicle size and paint condition."],
+ ["custom","Custom Detail",165,"Otro",true,"Combine services or target specific areas or defects. Personalized plan and quote for the vehicle."],
+ ["wheel","Wheel Restoration",65,"Otro",false,"Repair of scratches and curb rash on rims for a clean, uniform finish. Price per wheel may vary with damage."],
+ ["boat-wash","Boat – Exterior Wash ($8/ft, min. $150)",150,"Bote",true,"Careful foam wash of the hull, deck and trailer. $8 per foot, minimum $150. "+X_WATER],
+ ["boat-wax","Boat – Wash & Wax ($20/ft, min. $300)",300,"Bote",true,"Foam wash plus wax protection to bring back shine and protect the gelcoat from sun and water. $20 per foot, minimum $300. "+X_WATER],
+ ["boat-int","Boat – Interior",250,"Bote",true,"Interior cleaning of the boat, starting at $250. "+X_WATER],
+ ["rv-wash","RV – Exterior Wash ($5/ft, min. $150)",150,"RV / Casa rodante",true,"Exterior wash of motorhomes, travel trailers and campers, where the RV is parked. $5 per foot, minimum $150. "+X_WATER],
+ ["rv-wax","RV – Wash & Wax ($12/ft, min. $300)",300,"RV / Casa rodante",true,"Exterior wash plus wax protection. $12 per foot, minimum $300. "+X_WATER],
+ ["rv-full","RV – Full Detail Inside & Out ($16/ft, min. $400)",400,"RV / Casa rodante",true,"Exterior wash and protection plus deep interior cleaning. $16 per foot, minimum $400. "+X_WATER],
+ ["x-pet","Extra – Pet Hair Removal",35,"Otro",false,"Add-on for vehicles with pet hair."],
+ ["x-petstain","Extra – Pet Hair + Stain Removal",70,"Otro",false,"Add-on for pet hair plus stains that need extraction."],
+ ["x-shampoo","Extra – Seat Shampoo & Extraction",15,"Otro",false,"Add-on shampoo and extraction for seats."],
+ ["x-wax","Extra – Wax Application",50,"Otro",false,"Hand or machine wax for extra gloss and temporary paint protection."],
+ ["x-carnauba","Extra – Carnauba Wax",30,"Otro",false,"Carnauba wax add-on for a warm, deep shine."],
+ ["x-engine","Extra – Engine Bay Detailing",85,"Otro",false,"Safe degreasing and cleaning of the engine bay, with dressing for plastics and rubber."],
+ ["x-vacuum","Extra – Vacuum Only",35,"Otro",false,"Regular vacuum only."],
+ ["x-mold","Interior Mold Treatment",475,"Otro",true,"Cleaning, steam treatment and sanitizing of mold-affected interior areas, with odor reduction. Does not include seat or carpet removal or HVAC treatment."]
+];
+function servInfo(nombre){const s=S.servicios.find(x=>x.nombre===nombre);if(!s||!s.descripcion)return "";return '<div class="kv" style="padding:10px 14px"><p style="margin:0;font-weight:700">'+esc(precioTxt(s))+'</p><p class="note" style="margin:4px 0 0">'+esc(s.descripcion)+'</p></div>'}
+function precioTxt(s){return (s.desde?"desde ":"")+money(s.precio)}
+async function cargarCatalogoWeb(){
+  if(!(await askConfirm("¿Reemplazar tu lista de servicios por la lista oficial con los precios de tu sitio web? Tus citas y cotizaciones anteriores no cambian.","Sí, reemplazar")))return;
+  const nuevos=new Set(CATALOGO_WEB.map(x=>"web-"+x[0]));
+  try{
+    for(const v of S.servicios){if(!nuevos.has(v.id))await deleteDoc(fsDoc(fs,"servicios",v.id))}
+    for(const [k,n,p,c,desde,d] of CATALOGO_WEB){await setDoc(fsDoc(fs,"servicios","web-"+k),{nombre:n,precio:p,categoria:c,desde:desde,descripcion:d,duracion:"",actualizado:Date.now()})}
+    toast("Lista de servicios actualizada");
+  }catch(e){handleErr(e)}
+}
+
 // ---------- respaldo ----------
 function exportar(){
   const data={app:"AutoLuxuries",version:1,fecha:new Date().toISOString(),ajustes:S.ajustes};
@@ -450,10 +499,10 @@ function vMembresias(){
 }
 
 function vServicios(){
-  let h='<div class="section"><h2><span style="font-size:22px">Servicios y precios</span><button type="button" class="btn sm pri" data-act="newServ">+ Nuevo</button></h2><p class="note" style="margin:0">Estos precios se llenan solos al agendar citas y armar cotizaciones.</p></div>';
+  let h='<div class="section"><h2><span style="font-size:22px">Servicios y precios</span><button type="button" class="btn sm pri" data-act="newServ">+ Nuevo</button></h2><p class="note" style="margin:0">Estos precios y descripciones se llenan solos al agendar citas y armar cotizaciones.</p><div class="btns"><button type="button" class="btn sm dark" data-act="cargarCatalogoWeb">Cargar lista oficial (precios del sitio web)</button></div></div>';
   if(!S.servicios.length)return h+'<div class="empty">Agrega tus servicios uno por uno, o empieza con una lista común y ponle tus precios.<button type="button" class="btn sm pri" data-act="seedServ">Agregar lista común</button></div>';
   const cats={};S.servicios.forEach(s=>{(cats[s.categoria||"Otro"]=cats[s.categoria||"Otro"]||[]).push(s)});
-  Object.keys(cats).forEach(k=>{h+='<div class="day">'+esc(k)+'</div><div class="list">'+cats[k].sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(s=>'<button type="button" class="row" data-act="editServ" data-id="'+s.id+'"><div class="main"><span class="t">'+esc(s.nombre)+'</span>'+(s.duracion?'<span class="s">'+esc(s.duracion)+'</span>':"")+'</div><div class="r"><b>'+(num(s.precio)?money(s.precio):'<span class="pill p-warn">Sin precio</span>')+'</b></div></button>').join("")+'</div>'});
+  Object.keys(cats).forEach(k=>{h+='<div class="day">'+esc(k)+'</div><div class="list">'+cats[k].sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(s=>'<button type="button" class="row" data-act="editServ" data-id="'+s.id+'"><div class="main"><span class="t">'+esc(s.nombre)+'</span>'+(s.descripcion?'<span class="s">'+esc(s.descripcion.length>110?s.descripcion.slice(0,110)+"…":s.descripcion)+'</span>':"")+(s.duracion?'<span class="s">'+esc(s.duracion)+'</span>':"")+'</div><div class="r"><b>'+(num(s.precio)?esc(precioTxt(s)):'<span class="pill p-warn">Sin precio</span>')+'</b></div></button>').join("")+'</div>'});
   return h;
 }
 
@@ -483,7 +532,7 @@ function copyText(txt){
 }
 const opt=(arr,sel)=>arr.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return '<option value="'+esc(v)+'"'+(String(v)===String(sel)?" selected":"")+'>'+esc(l)+'</option>'}).join("");
 const clienteOpts=sel=>'<option value="">Elige un cliente…</option>'+opt(S.clientes.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(c=>[c.id,c.nombre]),sel)+'<option value="__nuevo">+ Cliente nuevo</option>';
-const servOpts=sel=>'<option value="">Elige un servicio…</option>'+opt(S.servicios.map(s=>[s.nombre,s.nombre+(num(s.precio)?" · "+money(s.precio):"")]),sel)+'<option value="__otro">Otro (escribir)</option>';
+const servOpts=sel=>'<option value="">Elige un servicio…</option>'+opt(S.servicios.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(s=>[s.nombre,s.nombre+(num(s.precio)?" · "+precioTxt(s):"")]),sel)+'<option value="__otro">Otro (escribir)</option>';
 function fd(form){const o={};new FormData(form).forEach((v,k)=>o[k]=typeof v==="string"?v.trim():v);return o}
 
 // --- cliente ---
@@ -525,7 +574,7 @@ function formCita(id,pre){
   openSheet(id?"Editar cita":"Nueva cita",
    '<input type="hidden" name="id" value="'+esc(id||"")+'"><input type="hidden" name="estId" value="'+esc(c.estId||"")+'"><input type="hidden" name="solId" value="'+esc(c.solId||"")+'"><div class="f"><label for="ci_cli">Cliente</label><select id="ci_cli" name="clienteId" data-chg="citaCli">'+clienteOpts(c.clienteId)+'</select></div><div id="ci_new" class="g2" style="display:none"><div class="f"><label for="ci_nn">Nombre</label><input id="ci_nn" name="nuevoNombre"></div><div class="f"><label for="ci_nt">Teléfono</label><input id="ci_nt" name="nuevoTel" type="tel"></div></div>'+
    '<div class="g2"><div class="f"><label for="ci_tipo">Tipo</label><select id="ci_tipo" name="tipo">'+opt(TIPOS,c.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="ci_veh">Vehículo</label><input id="ci_veh" name="vehiculo" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(c.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"><datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
-   '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"></div>'+
+   '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"><div id="ci_servinfo">'+servInfo(c.servicio)+'</div></div>'+
    '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
    '<div class="f"><label for="ci_dur">¿Cuánto dura?</label><select id="ci_dur" name="duracion">'+opt([1,2,3,4,5,6,7,8,9].map(h=>[h,h+(h===1?" hora":" horas")+(h===9?" (todo el día)":"")]),c.duracion||durDefault())+'</select></div>'+
    '<div class="f"><label for="ci_dir">Dirección del servicio</label><input id="ci_dir" name="direccion" value="'+esc(c.direccion||(cli&&cli.direccion)||"")+'"></div>'+
@@ -570,6 +619,7 @@ function verCita(id){
   const pagos=S.pagos.filter(p=>p.citaId===id);
   let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>'+(c.direccion?'<div><span>Dirección</span><span>'+esc(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(c.precio))+'</span></div><div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
   if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
+  b+=servInfo(c.servicio);
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
   let acts='';
   if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button>';
@@ -624,7 +674,7 @@ async function submitEst(f){
 function textoEst(e){
   const n=negocio(), cli=byId("clientes",e.clienteId)||{};
   let t=n.nombre+"\nCotización "+(e.numero||"")+" · "+fDate(e.fecha,{day:"numeric",month:"long",year:"numeric"})+"\n\nCliente: "+(cli.nombre||"")+(e.vehiculo?"\n"+(e.tipo||"Vehículo")+": "+e.vehiculo:"")+"\n\n";
-  (e.items||[]).forEach(i=>{t+="• "+i.desc+(num(i.cant)>1?" x"+i.cant:"")+" — "+money(num(i.cant||1)*num(i.precio))+"\n"});
+  (e.items||[]).forEach(i=>{t+="• "+i.desc+(num(i.cant)>1?" x"+i.cant:"")+" — "+money(num(i.cant||1)*num(i.precio))+"\n";const sv=S.servicios.find(x=>x.nombre===i.desc);if(sv&&sv.descripcion)t+="   "+sv.descripcion+"\n"});
   if(num(e.descuento))t+="Descuento: -"+money(e.descuento)+"\n";
   t+="\nTOTAL: "+money(estTotal(e))+(e.validez?"\nVálida por "+e.validez:"")+(e.notas?"\n\n"+e.notas:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
   return t;
@@ -639,10 +689,10 @@ function verEst(id){
 // --- servicios ---
 function formServ(id){
   const s=id?byId("servicios",id):{categoria:"Auto"};
-  openSheet(id?"Editar servicio":"Nuevo servicio",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="sv_n">Nombre</label><input id="sv_n" name="nombre" value="'+esc(s.nombre)+'" placeholder="Detallado completo"></div><div class="g2"><div class="f"><label for="sv_p">Precio</label><input id="sv_p" name="precio" inputmode="decimal" value="'+esc(s.precio||"")+'"></div><div class="f"><label for="sv_c">Para</label><select id="sv_c" name="categoria">'+opt(TIPOS,s.categoria)+'</select></div></div><div class="f"><label for="sv_d">Duración aproximada</label><input id="sv_d" name="duracion" value="'+esc(s.duracion)+'" placeholder="3 horas"></div>',
+  openSheet(id?"Editar servicio":"Nuevo servicio",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="sv_n">Nombre</label><input id="sv_n" name="nombre" value="'+esc(s.nombre)+'" placeholder="Detallado completo"></div><div class="g2"><div class="f"><label for="sv_p">Precio</label><input id="sv_p" name="precio" inputmode="decimal" value="'+esc(s.precio||"")+'"></div><div class="f"><label for="sv_c">Para</label><select id="sv_c" name="categoria">'+opt(TIPOS,s.categoria)+'</select></div></div><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="desde" '+(s.desde?"checked":"")+'> Es precio "desde" (puede subir según tamaño o estado)</label><div class="f"><label for="sv_desc">Qué incluye</label><textarea id="sv_desc" name="descripcion" rows="4" placeholder="Qué incluye el servicio y cargos extra">'+esc(s.descripcion)+'</textarea></div><div class="f"><label for="sv_d">Duración aproximada</label><input id="sv_d" name="duracion" value="'+esc(s.duracion)+'" placeholder="3 horas"></div>',
    (id?'<button type="button" class="btn danger" data-act="delServ" data-id="'+id+'">Borrar</button>':"")+'<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar</button>',"serv");
 }
-async function submitServ(f){const o=fd(f);if(!o.nombre)return toast("Escribe el nombre del servicio.");try{await save("servicios",{id:o.id||undefined,nombre:o.nombre,precio:num(o.precio),categoria:o.categoria,duracion:o.duracion});closeSheet();toast("Servicio guardado")}catch(e){}}
+async function submitServ(f){const o=fd(f);if(!o.nombre)return toast("Escribe el nombre del servicio.");try{await save("servicios",{id:o.id||undefined,nombre:o.nombre,precio:num(o.precio),categoria:o.categoria,duracion:o.duracion,desde:!!o.desde,descripcion:o.descripcion||""});closeSheet();toast("Servicio guardado")}catch(e){}}
 async function seedServ(){
   const L=[["Lavado exterior a mano","Auto"],["Detallado interior","Auto"],["Detallado completo (interior y exterior)","Auto"],["Encerado / sellador de pintura","Auto"],["Corrección de pintura","Auto"],["Recubrimiento cerámico","Auto"],["Limpieza de motor","Auto"],["Restauración de faros","Auto"],["Detallado completo SUV / camioneta","SUV / Camioneta"],["Lavado y encerado de bote","Bote"],["Detallado interior de bote","Bote"],["Lavado exterior de RV","RV / Casa rodante"],["Detallado interior de RV","RV / Casa rodante"]];
   try{for(const[n,c]of L)await save("servicios",{nombre:n,precio:0,categoria:c,duracion:""});toast("Lista agregada. Ponle precio a cada uno.")}catch(e){}
@@ -781,7 +831,7 @@ const ACT={
   ovclose:(id,el,e)=>{if(e.target===el)closeSheet()},
   bloquearDia:async()=>{const d=$("#d_dia").value;if(!d)return toast("Elige el día que quieres bloquear.");const L=bloqueados();if(!L.includes(d))L.push(d);await saveAjustes(Object.assign({},S.ajustes,{bloqueados:L}));toast("Día bloqueado")},
   desbloquearDia:async d=>{await saveAjustes(Object.assign({},S.ajustes,{bloqueados:bloqueados().filter(x=>x!==d)}));toast("Día disponible otra vez")},
-  verVer, verAprobar, verRechazar,
+  cargarCatalogoWeb, verVer, verAprobar, verRechazar,
   verCopiarLink:id=>copyText(msgPlan(byId("verificaciones",id))),
   verPedirPrueba:id=>copyText(msgPrueba(byId("verificaciones",id))),
   verPdf:ref=>{const [id,i]=ref.split("|");const x=byId("verificaciones",id);const a=x&&x.archivos&&x.archivos[+i];if(!a)return;try{const bin=atob(a.data.split(",")[1]);const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);const url=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));window.open(url,"_blank")}catch(e){toast("No se pudo abrir el PDF.")}},
@@ -821,7 +871,7 @@ const ACT={
 function estTot(){const f=document.querySelector('form[data-form="est"]');if(!f)return;const t=$("#es_total");if(t)t.textContent=money(estTotal({items:readItems(f),descuento:num(f.descuento.value)}))}
 const CHG={
   citaCli:el=>{const f=el.form,v=el.value;$("#ci_new").style.display=v==="__nuevo"?"grid":"none";const c=byId("clientes",v);if(c){const vehs=c.vehiculos||[];$("#ci_vl").innerHTML=vehs.map(x=>'<option value="'+esc(x.desc)+'"></option>').join("");if(vehs[0]){f.vehiculo.value=vehs[0].desc;f.tipo.value=vehs[0].tipo}if(c.direccion)f.direccion.value=c.direccion}const m=c?memActiva(c.id):null;$("#ci_memwrap").style.display=m?"flex":"none"},
-  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio},
+  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";$("#ci_servinfo").innerHTML=servInfo(el.value);const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio},
   estCli:el=>{$("#es_new").style.display=el.value==="__nuevo"?"grid":"none";const c=byId("clientes",el.value);if(c&&c.vehiculos&&c.vehiculos[0]){el.form.vehiculo.value=c.vehiculos[0].desc;el.form.tipo.value=c.vehiculos[0].tipo}},
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}

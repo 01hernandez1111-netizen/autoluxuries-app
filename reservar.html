@@ -76,6 +76,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 30px}
     <h2><i>1</i><span data-t="s1">What do you need?</span></h2>
     <div class="types" id="types"></div>
     <div class="f"><label for="b_serv" data-t="serv">Service</label><select id="b_serv" required></select></div>
+    <p class="note" id="b_sdesc" style="margin:0"></p>
     <div class="f"><label for="b_veh" data-t="veh">Vehicle (year, make, model)</label><input id="b_veh" maxlength="120" placeholder="2021 Toyota RAV4"></div>
   </div>
   <div class="card">
@@ -175,6 +176,7 @@ function applyLang(){
 }
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{lang=b.dataset.lang;applyLang()}));
 $("#types").addEventListener("change",renderServ);
+$("#b_serv").addEventListener("change",()=>{const v=servicios.find(x=>x.nombre===$("#b_serv").value);$("#b_sdesc").textContent=v&&v.descripcion?v.descripcion:""});
 $("#b_date").addEventListener("change",renderTimes);
 applyLang();
 
