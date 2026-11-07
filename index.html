@@ -616,6 +616,18 @@ function mensajeCobro(c){
   const n=negocio(), cli=byId("clientes",c.clienteId)||{}, saldo=saldoCita(c);
   return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\nServicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":"")+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+(num(c.descuento)&&!c.usaMembresia?"\nPrecio: "+money(c.precioBase)+"\nDescuento: "+descTxt(c):"")+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
 }
+function msgConfirmCita(c,lang){
+  const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0],h=fHora(c.hora);
+  const veh=c.vehiculo?" ("+c.vehiculo+")":"";
+  if(lang==="es"){
+    const f=fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"});
+    const pr=c.usaMembresia?"Incluido en su membresía":(num(c.descuento)?money(c.precioBase)+" − descuento "+descTxt(c)+" = "+money(c.precio):money(c.precio));
+    return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\nServicio: "+(c.servicio||"Detallado")+veh+(c.direccion?"\nDirección: "+c.direccion:"")+"\nPrecio: "+pr+"\n\nSi necesita cambiar la cita, avísenos con al menos 24 horas de anticipación.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  }
+  let fe=c.fecha;try{fe=new Date(c.fecha+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}catch(e){}
+  const pr=c.usaMembresia?"Included in your membership":(num(c.descuento)?money(c.precioBase)+" − discount "+descTxt(c)+" = "+money(c.precio):money(c.precio));
+  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(c.servicio||"Detail")+veh+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
+}
 function verCita(id){
   const c=byId("citas",id); if(!c)return closeSheet();
   const cli=byId("clientes",c.clienteId)||{}, pag=pagadoCita(id), saldo=saldoCita(c);
@@ -625,6 +637,7 @@ function verCita(id){
   b+=servInfo(c.servicio);
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
   let acts='';
+  if(c.estado==="programada")acts+='<button type="button" class="btn" data-act="confCitaEn" data-id="'+id+'">Copiar confirmación (English)</button><button type="button" class="btn" data-act="confCitaEs" data-id="'+id+'">Copiar confirmación (Español)</button>';
   if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button>';
   if(saldo>0)acts+='<button type="button" class="btn" data-act="copiarCobro" data-id="'+id+'">Copiar mensaje de cobro</button><button type="button" class="btn pri" data-act="pagoCita" data-id="'+id+'">Registrar pago</button>';
   else if(c.estado==="programada"&&!c.usaMembresia)acts+='<button type="button" class="btn" data-act="pagoCita" data-id="'+id+'">Registrar depósito</button>';
@@ -858,6 +871,8 @@ const ACT={
   delRow:(id,el)=>{const r=el.parentElement;const box=r.parentElement;if(box.children.length>1)r.remove();else r.querySelectorAll("input").forEach(i=>i.value="");estTot()},
   completar:async id=>{const c=byId("citas",id);const rec=Object.assign({},c,{estado:"completada"});try{await save("citas",rec);await contarMembresia(id,rec);toast("Cita completada");setTimeout(()=>verCita(id),50)}catch(e){}},
   copiarCobro:id=>copyText(mensajeCobro(byId("citas",id))),
+  confCitaEn:id=>copyText(msgConfirmCita(byId("citas",id),"en")),
+  confCitaEs:id=>copyText(msgConfirmCita(byId("citas",id),"es")),
   copiarEst:id=>copyText(textoEst(byId("estimaciones",id))),
   estEnviada:async id=>{try{await save("estimaciones",Object.assign({},byId("estimaciones",id),{estado:"enviada"}));setTimeout(()=>verEst(id),50)}catch(e){}},
   estACita:id=>{const e=byId("estimaciones",id);formCita(null,{clienteId:e.clienteId,tipo:e.tipo,vehiculo:e.vehiculo,servicio:(e.items||[]).map(i=>i.desc).join(" + "),precio:estTotal(e),estId:id,notas:e.notas})},
