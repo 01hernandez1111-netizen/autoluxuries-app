@@ -578,7 +578,8 @@ function formCita(id,pre){
    '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
    '<div class="f"><label for="ci_dur">¿Cuánto dura?</label><select id="ci_dur" name="duracion">'+opt([1,2,3,4,5,6,7,8,9].map(h=>[h,h+(h===1?" hora":" horas")+(h===9?" (todo el día)":"")]),c.duracion||durDefault())+'</select></div>'+
    '<div class="f"><label for="ci_dir">Dirección del servicio</label><input id="ci_dir" name="direccion" value="'+esc(c.direccion||(cli&&cli.direccion)||"")+'"></div>'+
-   '<div class="g2"><div class="f"><label for="ci_p">Precio</label><input id="ci_p" name="precio" inputmode="decimal" value="'+esc(c.precio!=null?c.precio:"")+'" placeholder="0.00"></div><div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div></div>'+
+   '<div class="g2"><div class="f"><label for="ci_p">Precio del servicio</label><input id="ci_p" name="precio" inputmode="decimal" data-inp="citaTot" value="'+esc(c.precioBase!=null?c.precioBase:(c.precio!=null?c.precio:""))+'" placeholder="0.00"></div><div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div></div>'+
+   '<div class="g3"><div class="f"><label for="ci_desc">Descuento</label><input id="ci_desc" name="descuento" inputmode="decimal" data-inp="citaTot" value="'+esc(num(c.descuento)?c.descuento:"")+'" placeholder="0"></div><div class="f"><label for="ci_dtipo">Tipo</label><select id="ci_dtipo" name="descTipo" data-chg="citaTotChg">'+opt([["$","$"],["%","%"]],c.descTipo||"$")+'</select></div><div class="f"><label for="ci_dmot">Motivo</label><input id="ci_dmot" name="descMotivo" value="'+esc(c.descMotivo||"")+'" placeholder="Cliente frecuente"></div></div><div class="total"><span>Total a cobrar</span><span id="ci_total">'+money(totalCita(c.precioBase!=null?c.precioBase:c.precio,c.descuento,c.descTipo))+'</span></div>'+
    '<label id="ci_memwrap" style="display:'+(m?"flex":"none")+';gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="usaMembresia" '+(c.usaMembresia?"checked":"")+'> Cubierto por su membresía'+(m?' ('+esc(m.planNombre)+', '+Math.max(0,num(m.incluidos)-num(m.usados))+' disponibles)':"")+'</label>'+
    '<div class="f"><label for="ci_n">Notas</label><textarea id="ci_n" name="notas">'+esc(c.notas)+'</textarea></div>',
    '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cita</button>',"cita");
@@ -591,7 +592,7 @@ async function submitCita(f){
   if(!o.fecha)return toast("Elige la fecha.");
   const servicio=o.servSel==="__otro"||!o.servSel?o.servTxt:o.servSel;
   const prev=o.id?byId("citas",o.id):null;
-  const rec={id:o.id||undefined,clienteId,duracion:num(o.duracion)||durDefault(),tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precio:o.usaMembresia?0:num(o.precio),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
+  const rec={id:o.id||undefined,clienteId,duracion:num(o.duracion)||durDefault(),tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precioBase:num(o.precio),descuento:num(o.descuento),descTipo:o.descTipo||"$",descMotivo:o.descMotivo||"",precio:o.usaMembresia?0:totalCita(o.precio,o.descuento,o.descTipo),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
   // guardar vehículo en el cliente si es nuevo
   const cli=byId("clientes",clienteId);
   try{
@@ -609,15 +610,17 @@ async function contarMembresia(id,c){
     if(m){await save("membresias",Object.assign({},m,{usados:num(m.usados)+1}));await save("citas",Object.assign({},c,{id,membresiaContada:true}))}
   }
 }
+function totalCita(base,desc,tipo){const b=num(base),d=num(desc);return Math.max(0,Math.round((tipo==="%"?b-b*d/100:b-d)*100)/100)}
+function descTxt(c){if(!num(c.descuento))return "";return (c.descTipo==="%"?num(c.descuento)+"%":money(c.descuento))+(c.descMotivo?" ("+c.descMotivo+")":"")}
 function mensajeCobro(c){
   const n=negocio(), cli=byId("clientes",c.clienteId)||{}, saldo=saldoCita(c);
-  return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\nServicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":"")+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\nServicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":"")+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+(num(c.descuento)&&!c.usaMembresia?"\nPrecio: "+money(c.precioBase)+"\nDescuento: "+descTxt(c):"")+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
 }
 function verCita(id){
   const c=byId("citas",id); if(!c)return closeSheet();
   const cli=byId("clientes",c.clienteId)||{}, pag=pagadoCita(id), saldo=saldoCita(c);
   const pagos=S.pagos.filter(p=>p.citaId===id);
-  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>'+(c.direccion?'<div><span>Dirección</span><span>'+esc(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(c.precio))+'</span></div><div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>'+(c.direccion?'<div><span>Dirección</span><span>'+esc(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(num(c.descuento)?c.precioBase:c.precio))+'</span></div>'+(num(c.descuento)&&!c.usaMembresia?'<div><span>Descuento</span><span>-'+esc(descTxt(c))+'</span></div><div><span>Total</span><span>'+money(c.precio)+'</span></div>':"")+'<div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
   if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
   b+=servInfo(c.servicio);
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
@@ -869,9 +872,10 @@ const ACT={
   delMem:async id=>{if(await askConfirm("¿Borrar esta membresía?")){try{await removeDoc("membresias",id);closeSheet()}catch(e){}}}
 };
 function estTot(){const f=document.querySelector('form[data-form="est"]');if(!f)return;const t=$("#es_total");if(t)t.textContent=money(estTotal({items:readItems(f),descuento:num(f.descuento.value)}))}
-const CHG={
+function citaTot(){const f=document.querySelector('form[data-form="cita"]');if(!f)return;const t=$("#ci_total");if(t)t.textContent=money(totalCita(f.precio.value,f.descuento.value,f.descTipo.value))}
+const CHG={citaTotChg:()=>citaTot(),
   citaCli:el=>{const f=el.form,v=el.value;$("#ci_new").style.display=v==="__nuevo"?"grid":"none";const c=byId("clientes",v);if(c){const vehs=c.vehiculos||[];$("#ci_vl").innerHTML=vehs.map(x=>'<option value="'+esc(x.desc)+'"></option>').join("");if(vehs[0]){f.vehiculo.value=vehs[0].desc;f.tipo.value=vehs[0].tipo}if(c.direccion)f.direccion.value=c.direccion}const m=c?memActiva(c.id):null;$("#ci_memwrap").style.display=m?"flex":"none"},
-  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";$("#ci_servinfo").innerHTML=servInfo(el.value);const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio},
+  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";$("#ci_servinfo").innerHTML=servInfo(el.value);const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio;citaTot()},
   estCli:el=>{$("#es_new").style.display=el.value==="__nuevo"?"grid":"none";const c=byId("clientes",el.value);if(c&&c.vehiculos&&c.vehiculos[0]){el.form.vehiculo.value=c.vehiculos[0].desc;el.form.tipo.value=c.vehiculos[0].tipo}},
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
@@ -881,7 +885,7 @@ const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.aju
 
 document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;const fn=ACT[el.dataset.act];if(fn){if(el.dataset.act!=="ovclose")e.preventDefault();fn(el.dataset.id,el,e)}});
 document.addEventListener("change",e=>{if(e.target.id==="imp_file"&&e.target.files[0]){const f=e.target.files[0];askConfirm("¿Importar este respaldo? Los registros con el mismo código se reemplazan.","Sí, importar").then(ok=>{if(ok)importar(f)});e.target.value="";return}const el=e.target.closest("[data-chg]");if(el&&CHG[el.dataset.chg])CHG[el.dataset.chg](el)});
-document.addEventListener("input",e=>{if(e.target.id==="buscar"){buscar=e.target.value;const pos=e.target.selectionStart;render();const b=$("#buscar");if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(_){}}}else if(e.target.dataset.inp==="estTot")estTot()});
+document.addEventListener("input",e=>{if(e.target.id==="buscar"){buscar=e.target.value;const pos=e.target.selectionStart;render();const b=$("#buscar");if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(_){}}}else if(e.target.dataset.inp==="estTot")estTot();else if(e.target.dataset.inp==="citaTot")citaTot()});
 document.addEventListener("submit",e=>{const f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();const fn=SUB[f.dataset.form];if(fn)fn(f)});
 
 init();
