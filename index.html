@@ -123,6 +123,10 @@ nav.tabs button.on{color:var(--gold-ink)}
 .itemrow{display:grid;grid-template-columns:1fr 64px 92px 34px;gap:6px;align-items:center}
 .vehrow{display:grid;grid-template-columns:120px 1fr 34px;gap:6px;align-items:center}
 .itemrow input,.itemrow select,.vehrow input,.vehrow select{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);width:100%;min-width:0}
+.cvrow{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;background:var(--card)}
+.cvrow select,.cvrow input{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);width:100%;min-width:0}
+.cvrow .cvh{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
 .del{background:none;border:0;color:var(--bad);font-size:20px;cursor:pointer;line-height:1}
 .kv{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px}
 .kv div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:15px}
@@ -565,6 +569,12 @@ function verCliente(id){
 }
 
 // --- cita ---
+function itemsOf(c){if(c.items&&c.items.length)return c.items;return [{tipo:c.tipo,vehiculo:c.vehiculo,servicio:c.servicio,precio:c.precioBase!=null?c.precioBase:c.precio}]}
+function cvRow(it){it=it||{};const inCat=!it.servicio||S.servicios.some(s=>s.nombre===it.servicio);
+  return '<div class="cvrow"><div class="cvh"><span class="cvn">Vehículo</span><button type="button" class="del" data-act="delCv" aria-label="Quitar vehículo">×</button></div><div class="vehrow" style="grid-template-columns:120px 1fr"><select name="cvtipo" aria-label="Tipo">'+opt(TIPOS,it.tipo||"Auto")+'</select><input name="cvveh" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(it.vehiculo||"")+'" aria-label="Vehículo"></div><select name="cvserv" data-chg="cvServ" aria-label="Servicio">'+servOpts(inCat?it.servicio:"__otro")+'</select><input name="cvservtxt" placeholder="Describe el servicio" value="'+esc(inCat?"":it.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"><div class="cvinfo">'+servInfo(it.servicio)+'</div><label class="cvh" style="margin-top:2px">Precio de este vehículo</label><input name="cvprecio" inputmode="decimal" data-inp="citaTot" placeholder="0.00" value="'+esc(it.precio!=null&&it.precio!==""?it.precio:"")+'" aria-label="Precio"></div>'}
+function savedChips(vehs){return vehs.length?'<div class="f"><label>Vehículos guardados (toca para agregar)</label><div class="chips">'+vehs.map((v,i)=>'<button type="button" class="btn sm" data-act="cvAddSaved" data-id="'+i+'">+ '+esc(v.desc)+'</button>').join("")+'</div></div>':""}
+function cvNumerar(){document.querySelectorAll("#cvs .cvrow").forEach((r,i,a)=>{r.querySelector(".cvn").textContent=a.length>1?"Vehículo "+(i+1):"Vehículo"})}
+function itemsTxt(c,lang){const it=itemsOf(c);if(it.length<2)return "";return it.map((x,i)=>(lang==="en"?"Vehicle ":"Vehículo ")+(i+1)+": "+(x.vehiculo||x.tipo||"")+" – "+(x.servicio||"")+(num(x.precio)?" "+money(x.precio):"")).join("\n")}
 function formCita(id,pre){
   const c=id?byId("citas",id):Object.assign({fecha:today(),hora:"09:00",estado:"programada"},pre||{});
   const cli=c.clienteId?byId("clientes",c.clienteId):null;
@@ -573,30 +583,35 @@ function formCita(id,pre){
   const m=c.clienteId?memActiva(c.clienteId):null;
   openSheet(id?"Editar cita":"Nueva cita",
    '<input type="hidden" name="id" value="'+esc(id||"")+'"><input type="hidden" name="estId" value="'+esc(c.estId||"")+'"><input type="hidden" name="solId" value="'+esc(c.solId||"")+'"><div class="f"><label for="ci_cli">Cliente</label><select id="ci_cli" name="clienteId" data-chg="citaCli">'+clienteOpts(c.clienteId)+'</select></div><div id="ci_new" class="g2" style="display:none"><div class="f"><label for="ci_nn">Nombre</label><input id="ci_nn" name="nuevoNombre"></div><div class="f"><label for="ci_nt">Teléfono</label><input id="ci_nt" name="nuevoTel" type="tel"></div></div>'+
-   '<div class="g2"><div class="f"><label for="ci_tipo">Tipo</label><select id="ci_tipo" name="tipo">'+opt(TIPOS,c.tipo||(vehs[0]&&vehs[0].tipo)||"Auto")+'</select></div><div class="f"><label for="ci_veh">Vehículo</label><input id="ci_veh" name="vehiculo" list="ci_vl" placeholder="2021 Honda Civic gris" value="'+esc(c.vehiculo||(vehs[0]&&vehs[0].desc)||"")+'"><datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
-   '<div class="f"><label for="ci_serv">Servicio</label><select id="ci_serv" name="servSel" data-chg="citaServ">'+servOpts(inCat?c.servicio:"__otro")+'</select><input id="ci_servtxt" name="servTxt" placeholder="Describe el servicio" value="'+esc(inCat?"":c.servicio)+'" style="display:'+(inCat?"none":"block")+'" aria-label="Servicio"><div id="ci_servinfo">'+servInfo(c.servicio)+'</div></div>'+
+   '<datalist id="ci_vl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist><div id="ci_saved">'+savedChips(vehs)+'</div><div class="f"><label>Vehículos y servicios de esta cita</label><div id="cvs" style="display:flex;flex-direction:column;gap:8px">'+(id||c.vehiculo||c.servicio||!vehs[0]?itemsOf(c):[{tipo:vehs[0].tipo,vehiculo:vehs[0].desc}]).map(cvRow).join("")+'</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="addCv">+ Otro vehículo</button></div>'+
    '<div class="g2"><div class="f"><label for="ci_f">Fecha</label><input id="ci_f" name="fecha" type="date" value="'+esc(c.fecha)+'"></div><div class="f"><label for="ci_h">Hora</label><input id="ci_h" name="hora" type="time" value="'+esc(c.hora)+'"></div></div>'+
    '<div class="f"><label for="ci_dur">¿Cuánto dura?</label><select id="ci_dur" name="duracion">'+opt([1,2,3,4,5,6,7,8,9].map(h=>[h,h+(h===1?" hora":" horas")+(h===9?" (todo el día)":"")]),c.duracion||durDefault())+'</select></div>'+
    '<div class="f"><label for="ci_dir">Dirección del servicio</label><input id="ci_dir" name="direccion" value="'+esc(c.direccion||(cli&&cli.direccion)||"")+'"></div>'+
-   '<div class="g2"><div class="f"><label for="ci_p">Precio del servicio</label><input id="ci_p" name="precio" inputmode="decimal" data-inp="citaTot" value="'+esc(c.precioBase!=null?c.precioBase:(c.precio!=null?c.precio:""))+'" placeholder="0.00"></div><div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div></div>'+
-   '<div class="g3"><div class="f"><label for="ci_desc">Descuento</label><input id="ci_desc" name="descuento" inputmode="decimal" data-inp="citaTot" value="'+esc(num(c.descuento)?c.descuento:"")+'" placeholder="0"></div><div class="f"><label for="ci_dtipo">Tipo</label><select id="ci_dtipo" name="descTipo" data-chg="citaTotChg">'+opt([["$","$"],["%","%"]],c.descTipo||"$")+'</select></div><div class="f"><label for="ci_dmot">Motivo</label><input id="ci_dmot" name="descMotivo" value="'+esc(c.descMotivo||"")+'" placeholder="Cliente frecuente"></div></div><div class="total"><span>Total a cobrar</span><span id="ci_total">'+money(totalCita(c.precioBase!=null?c.precioBase:c.precio,c.descuento,c.descTipo))+'</span></div>'+
+   '<div class="f"><label for="ci_e">Estado</label><select id="ci_e" name="estado">'+opt([["programada","Programada"],["completada","Completada"],["cancelada","Cancelada"]],c.estado)+'</select></div>'+
+   '<div class="g3"><div class="f"><label for="ci_desc">Descuento</label><input id="ci_desc" name="descuento" inputmode="decimal" data-inp="citaTot" value="'+esc(num(c.descuento)?c.descuento:"")+'" placeholder="0"></div><div class="f"><label for="ci_dtipo">Tipo</label><select id="ci_dtipo" name="descTipo" data-chg="citaTotChg">'+opt([["$","$"],["%","%"]],c.descTipo||"$")+'</select></div><div class="f"><label for="ci_dmot">Motivo</label><input id="ci_dmot" name="descMotivo" value="'+esc(c.descMotivo||"")+'" placeholder="Cliente frecuente"></div></div><div class="total"><span>Total a cobrar</span><span id="ci_total">'+money(totalCita(itemsOf(c).reduce((a,x)=>a+num(x.precio),0),c.descuento,c.descTipo))+'</span></div>'+
    '<label id="ci_memwrap" style="display:'+(m?"flex":"none")+';gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="usaMembresia" '+(c.usaMembresia?"checked":"")+'> Cubierto por su membresía'+(m?' ('+esc(m.planNombre)+', '+Math.max(0,num(m.incluidos)-num(m.usados))+' disponibles)':"")+'</label>'+
    '<div class="f"><label for="ci_n">Notas</label><textarea id="ci_n" name="notas">'+esc(c.notas)+'</textarea></div>',
    '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cita</button>',"cita");
+  cvNumerar();
 }
 async function submitCita(f){
   const o=fd(f); let clienteId=o.clienteId;
+  const items=[...f.querySelectorAll("#cvs .cvrow")].map(r=>{const sv=r.querySelector('[name="cvserv"]').value;return {tipo:r.querySelector('[name="cvtipo"]').value,vehiculo:r.querySelector('[name="cvveh"]').value.trim(),servicio:sv==="__otro"||!sv?r.querySelector('[name="cvservtxt"]').value.trim():sv,precio:num(r.querySelector('[name="cvprecio"]').value)}}).filter(x=>x.vehiculo||x.servicio||x.precio);
+  if(!items.length)return toast("Agrega al menos un vehículo o servicio.");
+  const base=items.reduce((a,x)=>a+num(x.precio),0);
+  o.tipo=items[0].tipo;o.vehiculo=items.map(x=>x.vehiculo).filter(Boolean).join(" + ");o.precio=base;
+  const nuevosV=items.filter(x=>x.vehiculo).map(x=>({tipo:x.tipo,desc:x.vehiculo}));
   if(clienteId==="__nuevo"){if(!o.nuevoNombre)return toast("Escribe el nombre del cliente nuevo.");
-    try{clienteId=await save("clientes",{nombre:o.nuevoNombre,telefono:o.nuevoTel,direccion:o.direccion,vehiculos:o.vehiculo?[{tipo:o.tipo,desc:o.vehiculo}]:[],creado:today()})}catch(e){return}}
+    try{clienteId=await save("clientes",{nombre:o.nuevoNombre,telefono:o.nuevoTel,direccion:o.direccion,vehiculos:nuevosV,creado:today()})}catch(e){return}}
   if(!clienteId)return toast("Elige un cliente.");
   if(!o.fecha)return toast("Elige la fecha.");
-  const servicio=o.servSel==="__otro"||!o.servSel?o.servTxt:o.servSel;
+  const servicio=items.map(x=>x.servicio).filter(Boolean).join(" + ");
   const prev=o.id?byId("citas",o.id):null;
-  const rec={id:o.id||undefined,clienteId,duracion:num(o.duracion)||durDefault(),tipo:o.tipo,vehiculo:o.vehiculo,servicio,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precioBase:num(o.precio),descuento:num(o.descuento),descTipo:o.descTipo||"$",descMotivo:o.descMotivo||"",precio:o.usaMembresia?0:totalCita(o.precio,o.descuento,o.descTipo),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
+  const rec={id:o.id||undefined,clienteId,duracion:num(o.duracion)||durDefault(),tipo:o.tipo,vehiculo:o.vehiculo,servicio,items,fecha:o.fecha,hora:o.hora,direccion:o.direccion,precioBase:num(o.precio),descuento:num(o.descuento),descTipo:o.descTipo||"$",descMotivo:o.descMotivo||"",precio:o.usaMembresia?0:totalCita(o.precio,o.descuento,o.descTipo),estado:o.estado,usaMembresia:!!o.usaMembresia,notas:o.notas,estId:o.estId||"",membresiaContada:prev?!!prev.membresiaContada:false};
   // guardar vehículo en el cliente si es nuevo
   const cli=byId("clientes",clienteId);
   try{
-    if(cli&&o.vehiculo&&!(cli.vehiculos||[]).some(v=>v.desc.toLowerCase()===o.vehiculo.toLowerCase())){await save("clientes",Object.assign({},cli,{vehiculos:(cli.vehiculos||[]).concat([{tipo:o.tipo,desc:o.vehiculo}])}))}
+    if(cli){const ya=(cli.vehiculos||[]).map(v=>(v.desc||"").toLowerCase());const add=nuevosV.filter(v=>!ya.includes(v.desc.toLowerCase()));if(add.length)await save("clientes",Object.assign({},cli,{vehiculos:(cli.vehiculos||[]).concat(add)}))}
     const nid=await save("citas",rec);
     await contarMembresia(nid,rec);
     if(o.estId){const e=byId("estimaciones",o.estId);if(e&&e.estado!=="aceptada")await save("estimaciones",Object.assign({},e,{estado:"aceptada"}))}
@@ -614,7 +629,7 @@ function totalCita(base,desc,tipo){const b=num(base),d=num(desc);return Math.max
 function descTxt(c){if(!num(c.descuento))return "";return (c.descTipo==="%"?num(c.descuento)+"%":money(c.descuento))+(c.descMotivo?" ("+c.descMotivo+")":"")}
 function mensajeCobro(c){
   const n=negocio(), cli=byId("clientes",c.clienteId)||{}, saldo=saldoCita(c);
-  return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\nServicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":"")+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+(num(c.descuento)&&!c.usaMembresia?"\nPrecio: "+money(c.precioBase)+"\nDescuento: "+descTxt(c):"")+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  return "Hola "+(cli.nombre||"").split(" ")[0]+", gracias por confiar en "+n.nombre+".\n\n"+(itemsOf(c).length>1?itemsTxt(c,"es"):"Servicio: "+(c.servicio||"Detallado")+(c.vehiculo?" ("+c.vehiculo+")":""))+"\nFecha: "+fDate(c.fecha,{day:"numeric",month:"long",year:"numeric"})+(num(c.descuento)&&!c.usaMembresia?"\nPrecio: "+money(c.precioBase)+"\nDescuento: "+descTxt(c):"")+"\nTotal pendiente: "+money(saldo)+(n.cobro?"\n\nPuede pagar así:\n"+n.cobro:"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
 }
 function mapLink(d){return '<a class="tel" href="https://maps.apple.com/?q='+encodeURIComponent(d)+'" target="_blank" rel="noopener">'+esc(d)+' ↗</a>'}
 function msgConfirmCita(c,lang){
@@ -623,19 +638,19 @@ function msgConfirmCita(c,lang){
   if(lang==="es"){
     const f=fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"});
     const pr=c.usaMembresia?"Incluido en su membresía":(num(c.descuento)?money(c.precioBase)+" − descuento "+descTxt(c)+" = "+money(c.precio):money(c.precio));
-    return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\nServicio: "+(c.servicio||"Detallado")+veh+(c.direccion?"\nDirección: "+c.direccion:"")+"\nPrecio: "+pr+"\n\nSi necesita cambiar la cita, avísenos con al menos 24 horas de anticipación.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+    return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"es"):"Servicio: "+(c.servicio||"Detallado")+veh)+(c.direccion?"\nDirección: "+c.direccion:"")+"\nPrecio: "+pr+"\n\nSi necesita cambiar la cita, avísenos con al menos 24 horas de anticipación.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
   }
   let fe=c.fecha;try{fe=new Date(c.fecha+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}catch(e){}
   const pr=c.usaMembresia?"Included in your membership":(num(c.descuento)?money(c.precioBase)+" − discount "+descTxt(c)+" = "+money(c.precio):money(c.precio));
-  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(c.servicio||"Detail")+veh+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
+  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"en"):"Service: "+(c.servicio||"Detail")+veh)+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
 }
 function verCita(id){
   const c=byId("citas",id); if(!c)return closeSheet();
   const cli=byId("clientes",c.clienteId)||{}, pag=pagadoCita(id), saldo=saldoCita(c);
   const pagos=S.pagos.filter(p=>p.citaId===id);
-  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div><div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>'+(c.direccion?'<div><span>Dirección</span><span>'+mapLink(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(num(c.descuento)?c.precioBase:c.precio))+'</span></div>'+(num(c.descuento)&&!c.usaMembresia?'<div><span>Descuento</span><span>-'+esc(descTxt(c))+'</span></div><div><span>Total</span><span>'+money(c.precio)+'</span></div>':"")+'<div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
+  let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div>'+(itemsOf(c).length>1?itemsOf(c).map((x,i)=>'<div><span>Vehículo '+(i+1)+'</span><span style="text-align:right">'+esc(x.vehiculo||x.tipo||"—")+'<br><small style="color:var(--muted)">'+esc(x.servicio||"—")+' · '+money(x.precio)+'</small></span></div>').join(""):'<div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>')+(c.direccion?'<div><span>Dirección</span><span>'+mapLink(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(num(c.descuento)?c.precioBase:c.precio))+'</span></div>'+(num(c.descuento)&&!c.usaMembresia?'<div><span>Descuento</span><span>-'+esc(descTxt(c))+'</span></div><div><span>Total</span><span>'+money(c.precio)+'</span></div>':"")+'<div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
   if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
-  b+=servInfo(c.servicio);
+  b+=itemsOf(c).map(x=>servInfo(x.servicio)).join("");
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+'</span></div>').join("")+'</div></div>';
   let acts='';
   if(c.estado==="programada")acts+='<button type="button" class="btn" data-act="confCitaEn" data-id="'+id+'">Copiar confirmación (English)</button><button type="button" class="btn" data-act="confCitaEs" data-id="'+id+'">Copiar confirmación (Español)</button>';
@@ -867,6 +882,9 @@ const ACT={
   newMem:()=>formMem(), editMem:id=>formMem(id), verMem, memRenovar:id=>formRenovar(id),
   exportar, salir:async()=>{if(await askConfirm("¿Cerrar sesión en este aparato?","Sí, cerrar")){signOut(auth)}},
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
+  addCv:()=>{$("#cvs").insertAdjacentHTML("beforeend",cvRow());cvNumerar()},
+  delCv:(id,el)=>{const r=el.closest(".cvrow");if($("#cvs").children.length>1)r.remove();else{r.querySelectorAll("input").forEach(i=>i.value="");r.querySelector("select[name=cvserv]").value=""}cvNumerar();citaTot()},
+  cvAddSaved:(i)=>{const f=document.querySelector('form[data-form="cita"]');const c=byId("clientes",f.clienteId.value);const v=c&&(c.vehiculos||[])[num(i)];if(!v)return;const rows=[...document.querySelectorAll("#cvs .cvrow")];if(rows.some(r=>r.querySelector('[name="cvveh"]').value.toLowerCase()===v.desc.toLowerCase()))return toast("Ese vehículo ya está en la cita");const empty=rows.find(r=>!r.querySelector('[name="cvveh"]').value&&!r.querySelector('[name="cvserv"]').value);if(empty){empty.querySelector('[name="cvveh"]').value=v.desc;empty.querySelector('[name="cvtipo"]').value=v.tipo}else{$("#cvs").insertAdjacentHTML("beforeend",cvRow({tipo:v.tipo,vehiculo:v.desc}))}cvNumerar()},
   addVeh:()=>{$("#vehs").insertAdjacentHTML("beforeend",vehRow())},
   addItem:()=>{$("#items").insertAdjacentHTML("beforeend",itemRow());estTot()},
   delRow:(id,el)=>{const r=el.parentElement;const box=r.parentElement;if(box.children.length>1)r.remove();else r.querySelectorAll("input").forEach(i=>i.value="");estTot()},
@@ -888,10 +906,10 @@ const ACT={
   delMem:async id=>{if(await askConfirm("¿Borrar esta membresía?")){try{await removeDoc("membresias",id);closeSheet()}catch(e){}}}
 };
 function estTot(){const f=document.querySelector('form[data-form="est"]');if(!f)return;const t=$("#es_total");if(t)t.textContent=money(estTotal({items:readItems(f),descuento:num(f.descuento.value)}))}
-function citaTot(){const f=document.querySelector('form[data-form="cita"]');if(!f)return;const t=$("#ci_total");if(t)t.textContent=money(totalCita(f.precio.value,f.descuento.value,f.descTipo.value))}
+function citaTot(){const f=document.querySelector('form[data-form="cita"]');if(!f)return;const base=[...f.querySelectorAll('[name="cvprecio"]')].reduce((a,i)=>a+num(i.value),0);const t=$("#ci_total");if(t)t.textContent=money(totalCita(base,f.descuento.value,f.descTipo.value))}
 const CHG={citaTotChg:()=>citaTot(),
-  citaCli:el=>{const f=el.form,v=el.value;$("#ci_new").style.display=v==="__nuevo"?"grid":"none";const c=byId("clientes",v);if(c){const vehs=c.vehiculos||[];$("#ci_vl").innerHTML=vehs.map(x=>'<option value="'+esc(x.desc)+'"></option>').join("");if(vehs[0]){f.vehiculo.value=vehs[0].desc;f.tipo.value=vehs[0].tipo}if(c.direccion)f.direccion.value=c.direccion}const m=c?memActiva(c.id):null;$("#ci_memwrap").style.display=m?"flex":"none"},
-  citaServ:el=>{const f=el.form;$("#ci_servtxt").style.display=el.value==="__otro"?"block":"none";$("#ci_servinfo").innerHTML=servInfo(el.value);const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))f.precio.value=s.precio;citaTot()},
+  citaCli:el=>{const f=el.form,v=el.value;$("#ci_new").style.display=v==="__nuevo"?"grid":"none";const c=byId("clientes",v);if(c){const vehs=c.vehiculos||[];$("#ci_vl").innerHTML=vehs.map(x=>'<option value="'+esc(x.desc)+'"></option>').join("");$("#ci_saved").innerHTML=savedChips(vehs);const r0=f.querySelector("#cvs .cvrow");if(vehs[0]&&r0&&!r0.querySelector('[name="cvveh"]').value){r0.querySelector('[name="cvveh"]').value=vehs[0].desc;r0.querySelector('[name="cvtipo"]').value=vehs[0].tipo}}else{$("#ci_saved").innerHTML=""}if(c&&c.direccion)f.direccion.value=c.direccion;const m=c?memActiva(c.id):null;$("#ci_memwrap").style.display=m?"flex":"none"},
+  cvServ:el=>{const r=el.closest(".cvrow");r.querySelector('[name="cvservtxt"]').style.display=el.value==="__otro"?"block":"none";r.querySelector(".cvinfo").innerHTML=servInfo(el.value);const s=S.servicios.find(x=>x.nombre===el.value);if(s&&num(s.precio))r.querySelector('[name="cvprecio"]').value=s.precio;citaTot()},
   estCli:el=>{$("#es_new").style.display=el.value==="__nuevo"?"grid":"none";const c=byId("clientes",el.value);if(c&&c.vehiculos&&c.vehiculos[0]){el.form.vehiculo.value=c.vehiculos[0].desc;el.form.tipo.value=c.vehiculos[0].tipo}},
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
