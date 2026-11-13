@@ -134,6 +134,12 @@ nav.tabs button.on{color:var(--gold-ink)}
 .firma{width:100%;height:170px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;touch-action:none;display:block}
 .chk{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .chk label{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;background:var(--card)}
+.guia{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:12px 14px;margin:0 0 10px}
+.guia summary{cursor:pointer;display:flex;flex-direction:column;gap:2px;list-style:none}
+.guia summary::-webkit-details-marker{display:none}
+.guia summary small{color:var(--muted)}
+.guia h4{margin:14px 0 6px;font-size:14px}
+.guia ul{margin:0;padding-left:20px;line-height:1.6}
 .vchips{display:flex;flex-wrap:wrap;gap:6px}
 .del{background:none;border:0;color:var(--bad);font-size:20px;cursor:pointer;line-height:1}
 .kv{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px}
@@ -384,7 +390,7 @@ const I={
  user:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.3-6 8-6s7 2 8 6"/></svg>'
 };
 const TABS=[["inicio","Inicio","home"],["citas","Citas","cal"],["clientes","Clientes","users"],["cobros","Cobros","cash"],["mas","Más","more"]];
-const SUBVIEWS={verificaciones:"mas",solicitudes:"inicio",estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas",volver:"inicio",finanzas:"mas"};
+const SUBVIEWS={verificaciones:"mas",solicitudes:"inicio",estimaciones:"mas",membresias:"mas",servicios:"mas",ajustes:"mas",volver:"inicio",finanzas:"mas",guia:"mas"};
 
 function route(){const h=(location.hash||"").replace("#","");return h||"inicio"}
 function go(v){if(location.hash!=="#"+v)location.hash=v;else render();window.scrollTo(0,0)}
@@ -394,7 +400,7 @@ window.addEventListener("hashchange",()=>{render();window.scrollTo(0,0)});
 function render(){
   const v=route(); const tab=SUBVIEWS[v]||v;
   $("#tabs").innerHTML=TABS.map(([k,l,i])=>'<button type="button" data-act="go" data-id="'+k+'" class="'+(tab===k?"on":"")+'">'+I[i]+'<span>'+l+'</span></button>').join("");
-  const views={verificaciones:vVerificaciones,solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes,volver:vVolver,finanzas:vFinanzas};
+  const views={verificaciones:vVerificaciones,solicitudes:vSolicitudes,inicio:vInicio,citas:vCitas,clientes:vClientes,cobros:vCobros,mas:vMas,estimaciones:vEstimaciones,membresias:vMembresias,servicios:vServicios,ajustes:vAjustes,volver:vVolver,finanzas:vFinanzas,guia:vGuia};
   let banner="";
   if(mode==="lento")banner='<div class="banner">Sin conexión por ahora. Puedes seguir trabajando: lo que guardes se sube solo cuando vuelva la señal.</div>';
   else if(mode==="permiso")banner='<div class="banner">Firebase no da permiso para ver tus datos. Revisa que las reglas de Firestore estén publicadas con tu correo. Entraste como: '+esc((auth.currentUser&&auth.currentUser.email)||"?")+'<br><small>'+esc(ultimoError)+'</small></div>';
@@ -487,7 +493,7 @@ function vMas(){
   const abiertas=S.estimaciones.filter(e=>e.estado==="borrador"||e.estado==="enviada").length;
   const act=S.membresias.filter(m=>m.estado==="activa").length;
   const item=(v,ic,t,s)=>'<button type="button" class="row" data-act="go" data-id="'+v+'"><div class="when" style="border:0;width:30px;padding:0">'+I[ic].replace("<svg",'<svg style="width:22px;height:22px;stroke:var(--gold-ink)"')+'</div><div class="main"><span class="t">'+t+'</span><span class="s">'+s+'</span></div><div class="r">›</div></button>';
-  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("solicitudes","cal","Solicitudes de clientes",S.solicitudes.filter(x=>x.estado==="nueva").length+" nueva"+(S.solicitudes.filter(x=>x.estado==="nueva").length===1?"":"s")+" · desde tu sitio web")+item("verificaciones","star","Planes de trabajo (verificación)",S.verificaciones.filter(x=>x.estado==="nueva").length+" por revisar · "+S.verificaciones.filter(x=>x.estado==="verificado").length+" verificados")+item("finanzas","cash","Gastos y ganancias",(()=>{const mk=mesKey(today());const g=S.pagos.filter(p=>mesKey(p.fecha)===mk).reduce((a,p)=>a+num(p.monto),0)-S.gastos.filter(x=>mesKey(x.fecha)===mk).reduce((a,x)=>a+num(x.monto),0);return "Ganancia este mes "+money(g)+" · gastos y millas"})())+item("volver","users","Clientes para volver",clientesVolver().length+" por avisar")+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
+  return '<div class="section"><h1>Más</h1></div><div class="menu">'+item("solicitudes","cal","Solicitudes de clientes",S.solicitudes.filter(x=>x.estado==="nueva").length+" nueva"+(S.solicitudes.filter(x=>x.estado==="nueva").length===1?"":"s")+" · desde tu sitio web")+item("verificaciones","star","Planes de trabajo (verificación)",S.verificaciones.filter(x=>x.estado==="nueva").length+" por revisar · "+S.verificaciones.filter(x=>x.estado==="verificado").length+" verificados")+item("finanzas","cash","Gastos y ganancias",(()=>{const mk=mesKey(today());const g=S.pagos.filter(p=>mesKey(p.fecha)===mk).reduce((a,p)=>a+num(p.monto),0)-S.gastos.filter(x=>mesKey(x.fecha)===mk).reduce((a,x)=>a+num(x.monto),0);return "Ganancia este mes "+money(g)+" · gastos y millas"})())+item("volver","users","Clientes para volver",clientesVolver().length+" por avisar")+item("estimaciones","doc","Cotizaciones",abiertas+" abierta"+(abiertas===1?"":"s"))+item("membresias","star","Membresías",act+" activa"+(act===1?"":"s"))+item("guia","doc","Guía de servicios","Qué incluye cada uno y cuándo cobrar extra")+item("servicios","cash","Servicios y precios",S.servicios.length+" servicio"+(S.servicios.length===1?"":"s"))+item("ajustes","more","Ajustes del negocio","Cómo te pagan, respaldo y cuenta")+'</div>';
 }
 
 const EST_PILL={borrador:'<span class="pill p-mut">Borrador</span>',enviada:'<span class="pill p-info">Enviada</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-bad">Rechazada</span>'};
@@ -533,6 +539,36 @@ function openSheet(title,body,foot,formName){
   $("#modal").innerHTML='<div class="ov" data-act="ovclose">'+(formName?'<form class="sheet" data-form="'+formName+'" novalidate>'+inner+'</form>':'<div class="sheet">'+inner+'</div>')+'</div>';
 }
 function closeSheet(){$("#modal").innerHTML=""}
+// --- guía de servicios ---
+const CASO="Se cotiza según el caso";
+const X_INT_G=[["Pelo de mascota en alfombras, asientos o cajuela","x-pet"],["Pelo de mascota + manchas que necesitan extracción","x-petstain"],["Manchas en asientos que necesitan shampoo y extracción","x-shampoo"],["Manchas en alfombras que necesitan extracción",null],["Suciedad excesiva: lodo, arena, mucha basura o derrames",null],["Moho en el interior","x-mold"]];
+const X_EXT_G=[["Suciedad excesiva: lodo pegado, mucho polvo o tierra de camino",null],["Musgo, moho o lama acumulada en la pintura, vidrios o molduras",null]];
+const OPC_EXT=[["Cera a mano o máquina","x-wax"],["Cera carnauba","x-carnauba"],["Limpieza del motor","x-engine"],["Restauración de rines (por rin)","wheel"]];
+const X_AGUA=[["Mucha oxidación",null],["Moho u hongos",null],["Manchas de agua dura",null],["Excremento de aves o manchas fuertes",null]];
+const GUIA=[
+ {k:"full",t:"Full Detail (por dentro y por fuera)",ids:["full-car","full-suv","full-truck"],inc:["Exterior: prelavado con espuma y lavado a mano","Descontaminación de la pintura","Rines, llantas y aros","Vidrios sin rayas","Interior: aspirado completo y limpieza de superficies","Restauración de plásticos y molduras","Ventanas por dentro","Eliminación de olores"],x:X_INT_G.concat(X_EXT_G),opc:OPC_EXT},
+ {k:"int",t:"Interior Detail",ids:["int-car","int-suv","int-truck"],inc:["Aspirado profundo de alfombras, asientos y cajuela","Limpieza y restauración de plásticos","Ventanas por dentro sin rayas","Eliminación de olores"],x:X_INT_G,opc:[["Solo aspirado","x-vacuum"]]},
+ {k:"ext",t:"Exterior Detail",ids:["ext-car","ext-suv","ext-truck"],inc:["Prelavado con espuma y lavado a mano","Rines y llantas","Vidrios","Acabado protector para brillo duradero"],x:X_EXT_G,opc:OPC_EXT},
+ {k:"paint",t:"Paint Correction (corrección de pintura)",ids:["paint"],inc:["Pulido a máquina para quitar remolinos, rayones ligeros y raspones","Devuelve profundidad, claridad y brillo","Ideal antes de un recubrimiento cerámico"],x:[["Rayones profundos o pintura muy dañada",null],["Vehículo grande",null]],nota:"El precio depende del tamaño y del estado de la pintura. El resultado varía con la profundidad del daño."},
+ {k:"ceramic",t:"Ceramic Coating (recubrimiento cerámico)",ids:["ceramic"],inc:["Capa protectora contra sol, lluvia y contaminantes","Brillo profundo tipo vidrio","Lavados más fáciles"],x:[["Pintura que necesita corrección antes de aplicar","paint"],["Vehículo grande",null]],nota:"El precio depende del tamaño y del estado de la pintura."},
+ {k:"wheel",t:"Wheel Restoration (rines)",ids:["wheel"],inc:["Reparación de rayones y raspones de banqueta","Acabado limpio y parejo"],x:[["Daño fuerte en el rin",null]],nota:"El precio es por rin y puede variar según el daño."},
+ {k:"mold",t:"Interior Mold Treatment (moho)",ids:["x-mold"],inc:["Limpieza de las áreas con moho","Tratamiento con vapor y desinfección","Reducción de olor"],x:[],nota:"No incluye quitar asientos o alfombras ni tratar el sistema de aire."},
+ {k:"custom",t:"Custom Detail",ids:["custom"],inc:["Combina servicios o áreas específicas","Plan y cotización a la medida del vehículo"],x:[]},
+ {k:"boat",t:"Botes",ids:["boat-wash","boat-wax","boat-int"],inc:["Lavado: casco, cubierta y tráiler con espuma ($8 por pie, mín. $150)","Lavado y cera: protege el gelcoat del sol y el agua ($20 por pie, mín. $300)","Interior: desde $250"],x:X_AGUA,nota:"El precio final depende del largo, el tamaño y el estado. Lo extra siempre se confirma con el cliente antes de empezar."},
+ {k:"rv",t:"RV / Casas rodantes",ids:["rv-wash","rv-wax","rv-full"],inc:["Lavado exterior donde está estacionado ($5 por pie, mín. $150)","Lavado y cera ($12 por pie, mín. $300)","Full Detail por dentro y por fuera ($16 por pie, mín. $400)"],x:X_AGUA,nota:"El precio final depende del largo, el tamaño y el estado. Lo extra siempre se confirma con el cliente antes de empezar."}
+];
+function precioServ(id){const sv=byId("servicios","web-"+id)||{};const c=CATALOGO_WEB.find(x=>x[0]===id);const n=sv.nombre||(c&&c[1])||id;const pr=sv.precio!=null?sv.precio:(c&&c[2]);return {n,txt:pr!=null?((sv.desde!=null?sv.desde:(c&&c[4]))?"desde ":"")+money(pr):""}}
+function guiaDe(nombre){const sv=S.servicios.find(x=>x.nombre===nombre);const id=sv&&sv.id&&sv.id.startsWith("web-")?sv.id.slice(4):(CATALOGO_WEB.find(x=>x[1]===nombre)||[])[0];if(!id)return null;return GUIA.find(g=>g.ids.includes(id))||(id.startsWith("x-")?null:null)}
+function guiaCard(g,abierto){const lx=(arr)=>arr.map(([t,id])=>{const p=id?precioServ(id):null;return '<div><span>'+esc(t)+'</span><span style="text-align:right;white-space:nowrap"><b>'+(p&&p.txt?esc(p.txt):'<small style="color:var(--muted)">'+CASO+'</small>')+'</b></span></div>'}).join("");
+  return '<details class="guia" '+(abierto?"open":"")+'><summary><b>'+esc(g.t)+'</b><small>'+g.ids.map(id=>{const p=precioServ(id);return esc(p.txt)}).filter(Boolean).join(" · ")+'</small></summary>'+
+  '<div class="kv">'+g.ids.map(id=>{const p=precioServ(id);return '<div><span>'+esc(p.n)+'</span><span><b>'+esc(p.txt||"—")+'</b></span></div>'}).join("")+'</div>'+
+  '<h4>Qué incluye</h4><ul>'+g.inc.map(i=>'<li>'+esc(i)+'</li>').join("")+'</ul>'+
+  (g.x&&g.x.length?'<h4 style="color:var(--warn)">Se cobra extra cuando hay…</h4><div class="kv">'+lx(g.x)+'</div>':"")+
+  (g.opc&&g.opc.length?'<h4>Extras que puedes ofrecer</h4><div class="kv">'+lx(g.opc)+'</div>':"")+
+  (g.nota?'<p class="note">'+esc(g.nota)+'</p>':"")+'</details>'}
+function vGuia(){return '<div class="section"><h1>Guía de servicios</h1><p class="note" style="margin:0">Lo que incluye cada servicio y cuándo se cobra un cargo adicional. Los precios salen de tu lista de Servicios: si cambias un precio allá, aquí se actualiza solo. Siempre avisa al cliente del cargo extra antes de empezar.</p></div>'+GUIA.map(g=>guiaCard(g,false)).join("")}
+function verGuia(nombre){const gs=(nombre||"").split(" + ").map(guiaDe).filter(Boolean);const uniq=[...new Set(gs)];
+  openSheet("Qué incluye",(uniq.length?uniq.map(g=>guiaCard(g,true)).join(""):'<p class="note">Este servicio no tiene guía. Revisa la Guía de servicios completa.</p>'),'<button type="button" class="btn" data-act="goGuia">Ver guía completa</button>')}
 // --- utilidades nuevas ---
 const BOOK_URL=location.origin+location.pathname.replace(/[^/]*$/,"")+"reservar.html";
 function diasEntre(a,b){return Math.round((toD(b)-toD(a))/864e5)}
@@ -812,6 +848,7 @@ function verCita(id){
   let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div>'+(itemsOf(c).length>1?itemsOf(c).map((x,i)=>'<div><span>Vehículo '+(i+1)+'</span><span style="text-align:right">'+esc(x.vehiculo||x.tipo||"—")+'<br><small style="color:var(--muted)">'+esc(x.servicio||"—")+' · '+money(x.precio)+'</small></span></div>').join(""):'<div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>')+(c.direccion?'<div><span>Dirección</span><span>'+mapLink(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(num(c.descuento)?c.precioBase:c.precio))+'</span></div>'+(num(c.descuento)&&!c.usaMembresia?'<div><span>Descuento</span><span>-'+esc(descTxt(c))+'</span></div><div><span>Total</span><span>'+money(c.precio)+'</span></div>':"")+'<div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
   if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
   b+=itemsOf(c).map(x=>servInfo(x.servicio)).join("");
+  if(itemsOf(c).some(x=>guiaDe(x.servicio)))b+='<div class="btns" style="margin-top:6px"><button type="button" class="btn sm" data-act="verGuia" data-id="'+id+'">Qué incluye y cargos extra</button></div>';
   b+=seccionRevision(c);
   b+=seccionFotos(id);
   const mc=S.millas.filter(m=>m.citaId===id);
@@ -1049,6 +1086,8 @@ const ACT={
   newMem:()=>formMem(), editMem:id=>formMem(id), verMem, memRenovar:id=>formRenovar(id),
   exportar, salir:async()=>{if(await askConfirm("¿Cerrar sesión en este aparato?","Sí, cerrar")){signOut(auth)}},
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
+  verGuia:id=>{const c=byId("citas",id);verGuia(itemsOf(c).map(x=>x.servicio).join(" + "))},
+  goGuia:()=>{closeSheet();go("guia")},
   resenaEn:id=>pedirResena(id,"en"),resenaEs:id=>pedirResena(id,"es"),
   verVolver,
   volverCopiarEn:id=>{const cl=byId("clientes",id);copyText(msgVolver(cl,"en"));save("clientes",Object.assign({},cl,{avisadoEn:today()}))},
