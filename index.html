@@ -539,6 +539,23 @@ function openSheet(title,body,foot,formName){
   $("#modal").innerHTML='<div class="ov" data-act="ovclose">'+(formName?'<form class="sheet" data-form="'+formName+'" novalidate>'+inner+'</form>':'<div class="sheet">'+inner+'</div>')+'</div>';
 }
 function closeSheet(){$("#modal").innerHTML=""}
+// --- cancelaciones ---
+const MOTIVOS=["El cliente canceló","El cliente no se presentó","Lo cancelé yo (clima, agenda, etc.)","Va a reprogramar","El precio no le funcionó","Otro"];
+function formCancelar(id){const c=byId("citas",id);if(!c)return;
+  openSheet("Cancelar cita",'<input type="hidden" name="id" value="'+id+'"><p class="note" style="margin:0">La cita queda guardada como cancelada y los datos del cliente se quedan en tu lista de clientes, para que puedas contactarlo después.</p><div class="f"><label for="cn_m">Motivo</label><select id="cn_m" name="motivo">'+opt(MOTIVOS,MOTIVOS[0])+'</select></div><div class="f"><label for="cn_n">Nota (opcional)</label><textarea id="cn_n" name="nota" placeholder="Ej: quiere hacerlo después de Navidad"></textarea></div>',
+  '<button type="button" class="btn" data-act="verCita" data-id="'+id+'">Volver</button><button type="submit" class="btn danger">Cancelar cita</button>',"cancelar")}
+async function submitCancelar(f){const o=fd(f),c=byId("citas",o.id);if(!c)return;await save("citas",Object.assign({},c,{estado:"cancelada",motivoCancel:o.motivo,notaCancel:o.nota||"",canceladaEn:today()}));toast("Cita cancelada. El cliente sigue guardado.");verCita(o.id)}
+function msgCancel(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];
+  if(lang==="es")return "Hola "+first+", su cita del "+fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"})+" con "+n.nombre+" quedó cancelada. Cuando quiera reprogramar, puede agendar aquí: "+BOOK_URL+" o responder a este mensaje.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  return "Hi "+first+", your appointment on "+fechaEn(c.fecha,{weekday:"long",month:"long",day:"numeric"})+" with "+n.nombre+" has been canceled. Whenever you'd like to reschedule, you can book here: "+BOOK_URL+" or just reply to this text.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"")}
+function formSolCancel(id){const x=byId("solicitudes",id);if(!x)return;const ya=clientePorTel(x.telefono);
+  openSheet("No se agendó",'<input type="hidden" name="id" value="'+id+'"><div class="f"><label for="sc_m">Motivo</label><select id="sc_m" name="motivo">'+opt(["El cliente canceló","No tengo espacio ese día","No contestó","El precio no le funcionó","Fuera de mi zona","Otro"],"El cliente canceló")+'</select></div><div class="f"><label for="sc_n">Nota (opcional)</label><textarea id="sc_n" name="nota"></textarea></div>'+(ya?'<p class="note" style="margin:0">Ya es tu cliente: <b>'+esc(ya.nombre)+'</b>. Se le anota en su ficha.</p>':'<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="guardar" checked> Guardar sus datos en Clientes</label>'),
+  '<button type="button" class="btn" data-act="verSol" data-id="'+id+'">Volver</button><button type="submit" class="btn danger">Guardar como no agendada</button>',"solcancel")}
+async function submitSolCancel(f){const o=fd(f),x=byId("solicitudes",o.id);if(!x)return;let c=clientePorTel(x.telefono);
+  const nota="Pidió cita por la página para el "+fDate(x.fecha,{day:"numeric",month:"short",year:"numeric"})+" ("+(x.servicio||"servicio")+") y no se agendó: "+o.motivo+(o.nota?" — "+o.nota:"")+".";
+  if(c){await save("clientes",Object.assign({},c,{notas:(c.notas?c.notas+"\n":"")+nota}))}
+  else if(f.guardar&&f.guardar.checked){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:nota,prospecto:true,canceloEn:today(),creado:today()});c={id:cid}}
+  await save("solicitudes",Object.assign({},x,{estado:"rechazada",motivoCancel:o.motivo,notaCancel:o.nota||"",clienteId:c?c.id:""}));closeSheet();toast(c?"Guardado. El cliente quedó en tu lista.":"Solicitud guardada como no agendada")}
 // --- guía de servicios ---
 const CASO="Se cotiza según el caso";
 const X_INT_G=[["Pelo de mascota en alfombras, asientos o cajuela","x-pet"],["Pelo de mascota + manchas que necesitan extracción","x-petstain"],["Manchas en asientos que necesitan shampoo y extracción","x-shampoo"],["Manchas en alfombras que necesitan extracción",null],["Suciedad excesiva: lodo, arena, mucha basura o derrames",null],["Moho en el interior","x-mold"]];
@@ -585,20 +602,25 @@ function diasVolver(){return num(S.ajustes&&S.ajustes.diasVolver)||60}
 function clientesVolver(){const t=today(),dv=diasVolver();const out=[];
   S.clientes.forEach(cl=>{const cs=S.citas.filter(c=>c.clienteId===cl.id);
     if(cs.some(c=>c.estado==="programada"&&c.fecha>=t))return;
-    const comp=cs.filter(c=>c.estado==="completada"&&c.fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha));if(!comp.length)return;
+    const comp=cs.filter(c=>c.estado==="completada"&&c.fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    if(!comp.length){const canc=cs.filter(c=>c.estado==="cancelada").map(c=>c.canceladaEn||c.fecha).filter(Boolean).concat(cl.canceloEn?[cl.canceloEn]:[]).sort().reverse()[0];if(!canc)return;
+      const d=diasEntre(canc,t);if(d<3||d>180)return;if(cl.avisadoEn&&cl.avisadoEn>=canc)return;if(cl.noRecordar&&(cl.noRecordar===true||cl.noRecordar>=canc))return;
+      out.push({cl,ult:{fecha:canc,servicio:"Canceló"},dias:d,cancelo:true});return}
     if(memActiva(cl.id))return;
     const ult=comp[0],dias=diasEntre(ult.fecha,t);if(dias<dv)return;if(cl.noRecordar&&(cl.noRecordar===true||cl.noRecordar>=ult.fecha))return;
     if(cl.avisadoEn&&cl.avisadoEn>=ult.fecha&&diasEntre(cl.avisadoEn,t)<dv)return;
     out.push({cl,ult,dias})});
   return out.sort((a,b)=>b.dias-a.dias)}
-function volverRow(x){return '<button type="button" class="row" data-act="verVolver" data-id="'+x.cl.id+'"><div class="main"><span class="t">'+esc(x.cl.nombre||"")+'</span><span class="s">Último: '+esc(x.ult.servicio||"servicio")+' · '+esc(fDate(x.ult.fecha,{day:"numeric",month:"short"}))+'</span></div><div class="r"><b>'+Math.round(x.dias/30)+(Math.round(x.dias/30)===1?" mes":" meses")+'</b><span class="pill p-warn">Ya le toca</span></div></button>'}
-function msgVolver(cl,lang){const n=negocio(),first=(cl.nombre||"").split(" ")[0];const ult=S.citas.filter(c=>c.clienteId===cl.id&&c.estado==="completada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""))[0]||{};const veh=(cl.vehiculos&&cl.vehiculos[0]&&cl.vehiculos[0].desc)||"";
+function volverRow(x){return '<button type="button" class="row" data-act="verVolver" data-id="'+x.cl.id+'"><div class="main"><span class="t">'+esc(x.cl.nombre||"")+'</span><span class="s">'+(x.cancelo?"Canceló o no agendó":"Último: "+esc(x.ult.servicio||"servicio"))+' · '+esc(fDate(x.ult.fecha,{day:"numeric",month:"short"}))+'</span></div><div class="r">'+(x.cancelo?'<b>'+x.dias+' días</b><span class="pill p-mut">Canceló</span>':'<b>'+Math.round(x.dias/30)+(Math.round(x.dias/30)===1?" mes":" meses")+'</b><span class="pill p-warn">Ya le toca</span>')+'</div></button>'}
+function msgVolver(cl,lang){const n=negocio(),first=(cl.nombre||"").split(" ")[0];
+  if(!S.citas.some(c=>c.clienteId===cl.id&&c.estado==="completada")){if(lang==="es")return "Hola "+first+", soy de "+n.nombre+". Hace unos días no pudimos hacer su cita y queríamos saber si le gustaría reprogramar. Puede escoger el día que le quede mejor aquí: "+BOOK_URL+" o responder a este mensaje.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+    return "Hi "+first+", this is "+n.nombre+". We weren't able to get your appointment done the other day and wanted to see if you'd like to reschedule. You can pick a day that works for you here: "+BOOK_URL+" or just reply to this text.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"")}const ult=S.citas.filter(c=>c.clienteId===cl.id&&c.estado==="completada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""))[0]||{};const veh=(cl.vehiculos&&cl.vehiculos[0]&&cl.vehiculos[0].desc)||"";
   if(lang==="es")return "Hola "+first+", ¡ya pasó un tiempo desde su último detallado con "+n.nombre+"!"+(ult.fecha?" ("+(ult.servicio||"servicio")+" el "+fDate(ult.fecha,{day:"numeric",month:"long"})+")":"")+" ¿Le gustaría dejar "+(veh?"su "+veh:"su vehículo")+" como nuevo otra vez? Puede agendar aquí: "+BOOK_URL+" o simplemente responder a este mensaje.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
   return "Hi "+first+", it's been a while since your last detail with "+n.nombre+"!"+(ult.fecha?" ("+(ult.servicio||"service")+" on "+fechaEn(ult.fecha)+")":"")+" Ready to get "+(veh?"your "+veh:"your vehicle")+" looking like new again? Book here: "+BOOK_URL+" or just reply to this text.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"")}
 function verVolver(id){const cl=byId("clientes",id);if(!cl)return;const x=clientesVolver().find(v=>v.cl.id===id);
   let b='<div class="kv"><div><span>Último servicio</span><span>'+esc(x?x.ult.servicio||"—":"—")+'</span></div><div><span>Fecha</span><span>'+esc(x?fDate(x.ult.fecha,{day:"numeric",month:"long",year:"numeric"}):"—")+'</span></div><div><span>Hace</span><span>'+(x?x.dias+" días":"—")+'</span></div>'+(cl.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cl.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cl.telefono)+'</a></span></div>':"")+'</div><p class="note" style="margin:0">Copia el mensaje y mándaselo por texto. Al copiarlo, el cliente sale de esta lista hasta dentro de '+diasVolver()+' días.</p><div class="btns"><button type="button" class="btn" data-act="volverCopiarEn" data-id="'+id+'">Copiar mensaje (English)</button><button type="button" class="btn" data-act="volverCopiarEs" data-id="'+id+'">Copiar mensaje (Español)</button></div>';
   openSheet(cl.nombre||"Cliente",b,'<button type="button" class="btn" data-act="volverNo" data-id="'+id+'">No recordar más</button><button type="button" class="btn" data-act="verCliente" data-id="'+id+'">Ver cliente</button><button type="button" class="btn pri" data-act="newCitaFor" data-id="'+id+'">Nueva cita</button>')}
-function vVolver(){const l=clientesVolver();return '<div class="section"><h1>Clientes para volver</h1><p class="note" style="margin:0">Clientes que llevan más de '+diasVolver()+' días sin servicio y no tienen cita programada. Cambia los días en Ajustes.</p></div>'+(l.length?'<div class="list">'+l.map(volverRow).join("")+'</div>':'<div class="empty">Nadie por ahora. Todos tus clientes están al día.</div>')}
+function vVolver(){const l=clientesVolver();return '<div class="section"><h1>Clientes para volver</h1><p class="note" style="margin:0">Clientes que llevan más de '+diasVolver()+' días sin servicio, y clientes nuevos que cancelaron o no se agendaron (te salen 3 días después). Ninguno tiene cita programada. Cambia los días en Ajustes.</p></div>'+(l.length?'<div class="list">'+l.map(volverRow).join("")+'</div>':'<div class="empty">Nadie por ahora. Todos tus clientes están al día.</div>')}
 // revisión del vehículo
 const DANOS=[["rayones","Rayones / Scratches"],["golpes","Golpes / Dents"],["pintura","Pintura dañada / Paint damage"],["vidrio","Vidrio estrellado / Cracked glass"],["rines","Rines raspados / Curb rash"],["manchas","Manchas permanentes / Permanent stains"],["asientos","Asientos rotos / Torn seats"],["plasticos","Plásticos rotos / Broken trim"],["olor","Olor fuerte / Strong odor"],["valor","Objetos de valor / Valuables inside"]];
 function seccionRevision(c){const r=c.revision;let h='<div class="section"><h2>Revisión del vehículo</h2>';
@@ -857,7 +879,9 @@ function verCita(id){
   let acts='';
   if(c.estado==="completada")acts+='<button type="button" class="btn" data-act="resenaEn" data-id="'+id+'">Pedir reseña (English)</button><button type="button" class="btn" data-act="resenaEs" data-id="'+id+'">Pedir reseña (Español)</button>'+(c.resenaPedida?'<span class="pill p-ok" style="align-self:center">Reseña pedida '+esc(fDate(c.resenaPedida,{day:"numeric",month:"short"}))+'</span>':"");
   if(c.estado==="programada")acts+='<button type="button" class="btn" data-act="confCitaEn" data-id="'+id+'">Copiar confirmación (English)</button><button type="button" class="btn" data-act="confCitaEs" data-id="'+id+'">Copiar confirmación (Español)</button>';
-  if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button>';
+  if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button><button type="button" class="btn danger" data-act="cancelarCita" data-id="'+id+'">Cancelar cita</button>';
+  if(c.estado==="cancelada"){b+='<p class="note" style="margin:0"><b>Cancelada</b>'+(c.canceladaEn?" el "+esc(fDate(c.canceladaEn,{day:"numeric",month:"short"})):"")+(c.motivoCancel?": "+esc(c.motivoCancel):"")+(c.notaCancel?" — "+esc(c.notaCancel):"")+'. Los datos del cliente siguen guardados.</p>';
+    acts+='<button type="button" class="btn" data-act="cancelMsgEn" data-id="'+id+'">Copiar aviso (English)</button><button type="button" class="btn" data-act="cancelMsgEs" data-id="'+id+'">Copiar aviso (Español)</button><button type="button" class="btn" data-act="reactivar" data-id="'+id+'">Reactivar cita</button><button type="button" class="btn pri" data-act="newCitaFor" data-id="'+c.clienteId+'">Nueva cita para este cliente</button>'}
   if(saldo>0)acts+='<button type="button" class="btn" data-act="copiarCobro" data-id="'+id+'">Copiar mensaje de cobro</button><button type="button" class="btn pri" data-act="pagoCita" data-id="'+id+'">Registrar pago</button>';
   else if(c.estado==="programada"&&!c.usaMembresia)acts+='<button type="button" class="btn" data-act="pagoCita" data-id="'+id+'">Registrar depósito</button>';
   b+='<div class="btns">'+acts+'</div>';
@@ -974,7 +998,7 @@ async function submitRenovar(f){
 }
 
 // --- solicitudes (desde la página pública para agendar) ---
-const SOL_PILL={nueva:'<span class="pill p-bad">Nueva</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-mut">Rechazada</span>'};
+const SOL_PILL={nueva:'<span class="pill p-bad">Nueva</span>',aceptada:'<span class="pill p-ok">Aceptada</span>',rechazada:'<span class="pill p-mut">No agendada</span>'};
 function solRow(x){return '<button type="button" class="row" data-act="verSol" data-id="'+x.id+'"><div class="when"><b>'+esc(fDate(x.fecha,{day:"numeric"}))+'</b><span>'+esc(fDate(x.fecha,{month:"short"}))+'</span></div><div class="main"><span class="t">'+esc(x.nombre)+'</span><span class="s">'+esc(x.servicio||"Servicio")+(x.hora?" · "+esc(fHora(x.hora)):"")+(x.vehiculo?" · "+esc(x.vehiculo):"")+'</span></div><div class="r">'+(SOL_PILL[x.estado]||"")+'</div></button>'}
 function vSolicitudes(){
   const L=S.solicitudes.slice().sort((a,b)=>(a.estado==="nueva"?0:1)-(b.estado==="nueva"?0:1)||(b.creado||0)-(a.creado||0));
@@ -994,7 +1018,7 @@ function verSol(id){
   if(ya)b+='<p class="note" style="margin:0">Ya es tu cliente: <b>'+esc(ya.nombre)+'</b>. La cita se le agrega a su historial.</p>';
   const ocup=S.citas.filter(c=>c.fecha===x.fecha&&c.estado!=="cancelada");
   if(ocup.length)b+='<p class="note" style="margin:0">Ese día ya tienes '+ocup.length+' cita'+(ocup.length===1?"":"s")+': '+ocup.map(c=>esc((fHora(c.hora)||"sin hora")+" "+cliNombre(c.clienteId))).join(", ")+'.</p>';
-  b+='<div class="btns">'+(x.estado==="nueva"?'<button type="button" class="btn pri" data-act="solAceptar" data-id="'+id+'">Aceptar y crear cita</button><button type="button" class="btn danger" data-act="solRechazar" data-id="'+id+'">Rechazar</button>':"")+'<button type="button" class="btn" data-act="solCopiar" data-id="'+id+'">Copiar mensaje de confirmación</button></div>';
+  b+='<div class="btns">'+(x.estado==="nueva"?'<button type="button" class="btn pri" data-act="solAceptar" data-id="'+id+'">Aceptar y crear cita</button><button type="button" class="btn danger" data-act="solRechazar" data-id="'+id+'">No se agendó / cancelar</button>':"")+'<button type="button" class="btn" data-act="solCopiar" data-id="'+id+'">Copiar mensaje de confirmación</button></div>';
   openSheet("Solicitud",b,'<button type="button" class="btn danger" data-act="delSol" data-id="'+id+'">Borrar</button>');
 }
 async function solAceptar(id){
@@ -1072,7 +1096,7 @@ const ACT={
   verPedirPrueba:id=>copyText(msgPrueba(byId("verificaciones",id))),
   verPdf:ref=>{const [id,i]=ref.split("|");const x=byId("verificaciones",id);const a=x&&x.archivos&&x.archivos[+i];if(!a)return;try{const bin=atob(a.data.split(",")[1]);const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);const url=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));window.open(url,"_blank")}catch(e){toast("No se pudo abrir el PDF.")}},
   delVer:async id=>{if(await askConfirm("¿Borrar esta solicitud por completo?")){await removeDoc("verificaciones",id);closeSheet()}},
-  verSol, solAceptar, solRechazar:async id=>{const x=byId("solicitudes",id);if(await askConfirm("¿Rechazar esta solicitud?","Sí, rechazar")){await save("solicitudes",Object.assign({},x,{estado:"rechazada"}));closeSheet();toast("Solicitud rechazada")}},
+  verSol, solAceptar, solRechazar:id=>formSolCancel(id),
   solCopiar:id=>copyText(msgConfirm(byId("solicitudes",id))),
   delSol:async id=>{if(await askConfirm("¿Borrar esta solicitud?")){await removeDoc("solicitudes",id);closeSheet()}},
   copiarLink:()=>copyText(location.origin+location.pathname.replace(/[^/]*$/,"")+"reservar.html"),
@@ -1086,6 +1110,9 @@ const ACT={
   newMem:()=>formMem(), editMem:id=>formMem(id), verMem, memRenovar:id=>formRenovar(id),
   exportar, salir:async()=>{if(await askConfirm("¿Cerrar sesión en este aparato?","Sí, cerrar")){signOut(auth)}},
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
+  cancelarCita:id=>formCancelar(id),
+  cancelMsgEn:id=>copyText(msgCancel(byId("citas",id),"en")),cancelMsgEs:id=>copyText(msgCancel(byId("citas",id),"es")),
+  reactivar:async id=>{const c=byId("citas",id);if(await askConfirm("¿Volver a poner esta cita como programada?","Sí, reactivar")){const n=Object.assign({},c,{estado:"programada"});delete n.motivoCancel;delete n.notaCancel;delete n.canceladaEn;await save("citas",n);toast("Cita reactivada");verCita(id)}},
   verGuia:id=>{const c=byId("citas",id);verGuia(itemsOf(c).map(x=>x.servicio).join(" + "))},
   goGuia:()=>{closeSheet();go("guia")},
   resenaEn:id=>pedirResena(id,"en"),resenaEs:id=>pedirResena(id,"es"),
@@ -1140,7 +1167,7 @@ const CHG={citaTotChg:()=>citaTot(),
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
 };
-const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{maxPorDia:num(o.maxPorDia),durDefault:num(o.durDefault)||3}));toast("Guardado. Tu página ya muestra los horarios nuevos.")},cliente:submitCliente,cita:submitCita,revision:submitRevision,gasto:submitGasto,millas:submitMillas,extras:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{resenaUrl:o.resenaUrl||"",diasVolver:num(o.diasVolver)||60,tarifaMilla:num(o.tarifaMilla)||"",baseDir:o.baseDir||""}));toast("Guardado")},pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
+const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{maxPorDia:num(o.maxPorDia),durDefault:num(o.durDefault)||3}));toast("Guardado. Tu página ya muestra los horarios nuevos.")},cliente:submitCliente,cita:submitCita,cancelar:submitCancelar,solcancel:submitSolCancel,revision:submitRevision,gasto:submitGasto,millas:submitMillas,extras:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{resenaUrl:o.resenaUrl||"",diasVolver:num(o.diasVolver)||60,tarifaMilla:num(o.tarifaMilla)||"",baseDir:o.baseDir||""}));toast("Guardado")},pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
   ajustes:async f=>{const o=fd(f);try{await saveAjustes(Object.assign({},S.ajustes,{nombre:o.nombre||"AutoLuxuries Auto Detailing",telefono:o.telefono,cobro:o.cobro,firma:o.firma}));toast("Ajustes guardados")}catch(e){}}};
 
 document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;const fn=ACT[el.dataset.act];if(fn){if(el.dataset.act!=="ovclose")e.preventDefault();fn(el.dataset.id,el,e)}});
