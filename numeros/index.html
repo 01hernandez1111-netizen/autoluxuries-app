@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="AL Números">
+<title>AutoLuxuries Números</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f4f4;--card:#fff;--ink:#0d0d0d;--muted:#666;--line:#e2e2e2;--head:#0a0a0a;--head-ink:#fff;
+  --ok:#2f7d4f;--ok-bg:#e4f2e9;--warn:#a46312;--warn-bg:#fbefd9;--bad:#b23b3b;--bad-bg:#f8e3e3;--info:#2f5d9a;--info-bg:#e3ecf8;
+  --display:"Sora",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0b0b;--card:#161616;--ink:#f2f2f2;--muted:#a0a0a0;--line:#2b2b2b;--head:#000;--ok:#6fcf97;--ok-bg:#16301f;--warn:#f0b35a;--warn-bg:#352612;--bad:#f08080;--bad-bg:#3a1a1a;--info:#8db6ef;--info-bg:#172438}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+header{background:var(--head);color:var(--head-ink);padding:calc(14px + env(safe-area-inset-top)) 18px 14px;position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center}
+.brand b{font-family:var(--display);font-weight:600;font-size:18px}
+.brand span{display:block;font-size:11px;letter-spacing:.18em;opacity:.7;text-transform:uppercase}
+header a{color:#fff;font-size:13px;opacity:.8;text-decoration:none;border:1px solid #444;border-radius:999px;padding:6px 12px}
+main{max-width:720px;margin:0 auto;padding:16px 16px calc(96px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px}
+h1{font-family:var(--display);font-size:22px;margin:0;font-weight:600}
+h2{font-family:var(--display);font-size:15px;margin:0 0 8px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.hero{background:var(--head);color:#fff;border-radius:18px;padding:18px}
+.hero .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;font-weight:600}
+.hero .v{font-family:var(--display);font-size:38px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0}
+.hero .s{font-size:14px;opacity:.85}
+.kv{display:flex;flex-direction:column}
+.kv>div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.kv>div:first-child{border-top:0}
+.kv span:last-child{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.kv .tot{font-weight:700}
+.kv .sub span:first-child{padding-left:14px;color:var(--muted);font-size:14px}
+.kv .sub span:last-child{font-weight:500;font-size:14px;color:var(--muted)}
+.neg{color:var(--bad)}.pos{color:var(--ok)}
+.per{display:flex;gap:6px;align-items:center}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;flex:1}
+.seg button{flex:1;border:0;background:none;border-radius:999px;padding:7px 0;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.nav{border:1px solid var(--line);background:var(--card);border-radius:999px;width:38px;height:38px;cursor:pointer;font-size:18px}
+.lbl{text-align:center;font-weight:600;color:var(--muted);font-size:14px}
+.tips{display:flex;flex-direction:column;gap:8px}
+.tip{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:15px}
+.tip .ic{font-size:20px;line-height:1.2}
+.tip.good{border-color:color-mix(in srgb,var(--ok) 40%,var(--line));background:var(--ok-bg)}
+.tip.warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:var(--warn-bg)}
+.tip.info{background:var(--info-bg);border-color:color-mix(in srgb,var(--info) 30%,var(--line))}
+.list{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .t{font-weight:600}
+.row .s{font-size:13px;color:var(--muted)}
+.row .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.f{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.f label{font-size:13px;font-weight:600;color:var(--muted)}
+.f input,.f select{padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);width:100%}
+.chk{display:flex;gap:10px;align-items:center;margin-top:12px;font-weight:600;font-size:15px}
+.chk input{width:20px;height:20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.svrow{display:grid;grid-template-columns:1fr 78px 64px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.svrow input{padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);width:100%;text-align:right}
+.svhd{font-size:12px;color:var(--muted);font-weight:600;border-top:0}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav.tabs button{flex:1;border:0;background:none;padding:6px 0;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+nav.tabs button.on{color:var(--ink)}
+nav.tabs svg{width:22px;height:22px}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--head);color:#fff}
+.login form{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+.login input{padding:13px;border-radius:12px;border:1px solid #333;background:#111;color:#fff}
+.login .logo{font-family:var(--display);font-size:28px;font-weight:600}
+.login button{padding:13px;border-radius:12px;border:0;background:#fff;color:#000;font-weight:700}
+.bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;z-index:9}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const fbApp = initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
+const auth = getAuth(fbApp);
+let fs; try{fs=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){fs=initializeFirestore(fbApp,{})}
+
+// ---------- estado ----------
+const S={citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],cfg:{},ok:false};
+let TAB=(location.hash||"#resumen").slice(1), PER="semana", OFF=0;
+const $=q=>document.querySelector(q);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=v=>{const n=parseFloat(String(v==null?"":v).replace(/[^0-9.\-]/g,""));return isFinite(n)?n:0};
+const money=n=>(n<0?"-":"")+"$"+Math.abs(Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const money0=n=>(n<0?"-":"")+"$"+Math.round(Math.abs(n)).toLocaleString("en-US");
+const pad=n=>String(n).padStart(2,"0");
+const dStr=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const toD=s=>new Date(s+"T00:00:00");
+const today=()=>dStr(new Date());
+const addDays=(s,n)=>{const d=toD(s);d.setDate(d.getDate()+n);return dStr(d)};
+const fDate=(s,o)=>{try{return toD(s).toLocaleDateString("es-US",o||{day:"numeric",month:"short"})}catch(e){return s}};
+function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+
+// ---------- configuración (editable en Ajustes) ----------
+const DEF={pctRenta:12,seguroSocial:true,boEstado:false,boEstadoPct:0.471,boCiudad:true,boCiudadPct:0.1,salesIncluido:false,salesPct:8.9,costoMilla:0.25,metodoAuto:"millas",costos:{}};
+const C=()=>Object.assign({},DEF,S.cfg||{},{costos:Object.assign({},(S.cfg&&S.cfg.costos)||{})});
+const AUTO_CATS=["Gasolina","Mantenimiento del vehículo"];
+function tarifaMilla(f){f=f||today();return f>="2026-07-01"?0.76:f>="2026-01-01"?0.725:f>="2025-01-01"?0.70:0.67}
+
+// ---------- periodos ----------
+function rango(per,off){const t=toD(today());let a,b,lab;
+  if(per==="semana"){const dow=(t.getDay()+6)%7;a=new Date(t);a.setDate(t.getDate()-dow+off*7);b=new Date(a);b.setDate(a.getDate()+6);
+    lab=off===0?"Esta semana":off===-1?"Semana pasada":fDate(dStr(a))+" – "+fDate(dStr(b))}
+  else if(per==="mes"){a=new Date(t.getFullYear(),t.getMonth()+off,1);b=new Date(a.getFullYear(),a.getMonth()+1,0);lab=a.toLocaleDateString("es-US",{month:"long",year:"numeric"});lab=lab[0].toUpperCase()+lab.slice(1)}
+  else{a=new Date(t.getFullYear()+off,0,1);b=new Date(t.getFullYear()+off,11,31);lab="Año "+a.getFullYear()}
+  return {a:dStr(a),b:dStr(b),lab}}
+const enR=(r,f)=>f&&f>=r.a&&f<=r.b;
+
+// ---------- cálculos ----------
+function itemsOf(c){if(c.items&&c.items.length)return c.items;return [{servicio:c.servicio,precio:c.precioBase!=null?c.precioBase:c.precio}]}
+function cfgServ(nombre){const c=C().costos[nombre]||{};return {costo:num(c.costo),horas:num(c.horas)||0}}
+function costoCita(c){const cfg=C();const prod=itemsOf(c).reduce((a,x)=>a+cfgServ(x.servicio).costo,0);
+  const mi=S.millas.filter(m=>m.citaId===c.id).reduce((a,m)=>a+num(m.millas),0);
+  const horas=itemsOf(c).reduce((a,x)=>a+(cfgServ(x.servicio).horas||0),0)||3;
+  return {prod,mi,millasCosto:mi*cfg.costoMilla,horas}}
+function calcular(r){const cfg=C();
+  const pagos=S.pagos.filter(p=>enR(r,p.fecha)),gastos=S.gastos.filter(g=>enR(r,g.fecha)),millas=S.millas.filter(m=>enR(r,m.fecha));
+  const cobrado=pagos.reduce((a,p)=>a+num(p.monto),0);
+  const sales=cfg.salesIncluido?cobrado*(cfg.salesPct/100)/(1+cfg.salesPct/100):0;
+  const ingreso=cobrado-sales;
+  const gastoTot=gastos.reduce((a,g)=>a+num(g.monto),0);
+  const gastoDeducible=gastos.filter(g=>!(cfg.metodoAuto==="millas"&&AUTO_CATS.includes(g.categoria))).reduce((a,g)=>a+num(g.monto),0);
+  const mi=millas.reduce((a,m)=>a+num(m.millas),0);
+  const dedMillas=cfg.metodoAuto==="millas"?millas.reduce((a,m)=>a+num(m.millas)*tarifaMilla(m.fecha),0):0;
+  const ganancia=ingreso-gastoTot;
+  const gravable=Math.max(0,ingreso-gastoDeducible-dedMillas);
+  const se=cfg.seguroSocial?gravable*0.9235*0.153:0;
+  const renta=Math.max(0,gravable-se/2)*(cfg.pctRenta/100);
+  const boE=cfg.boEstado?ingreso*cfg.boEstadoPct/100:0;
+  const boC=cfg.boCiudad?ingreso*cfg.boCiudadPct/100:0;
+  const impuestos=se+renta+boE+boC;
+  const libre=ingreso-gastoTot-impuestos;
+  return {pagos,gastos,millas,cobrado,sales,ingreso,gastoTot,gastoDeducible,mi,dedMillas,ganancia,gravable,se,renta,boE,boC,impuestos,libre}}
+function porServicio(r){const out={};
+  S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)&&!c.usaMembresia).forEach(c=>{const it=itemsOf(c),base=it.reduce((a,x)=>a+num(x.precio),0)||1,k=num(c.precio)/base,cc=costoCita(c),n=it.length;
+    it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+cc.millasCosto/n;o.horas+=cs.horas||3/n})});
+  return Object.entries(out).map(([k,v])=>Object.assign({nombre:k,gan:v.cobrado-v.costo,porHora:(v.cobrado-v.costo)/(v.horas||1)},v)).sort((a,b)=>b.gan-a.gan)}
+function saldoCita(c){if(c.usaMembresia)return 0;return num(c.precio)-S.pagos.filter(p=>p.citaId===c.id).reduce((a,p)=>a+num(p.monto),0)}
+// trimestres del IRS para pagos estimados
+function trimestres(y){return [
+  {n:1,a:y+"-01-01",b:y+"-03-31",vence:y+"-04-15"},{n:2,a:y+"-04-01",b:y+"-05-31",vence:y+"-06-15"},
+  {n:3,a:y+"-06-01",b:y+"-08-31",vence:y+"-09-15"},{n:4,a:y+"-09-01",b:y+"-12-31",vence:(y+1)+"-01-15"}]}
+
+// ---------- consejos automáticos ----------
+function consejos(){const cfg=C(),out=[];const r=rango(PER,OFF),k=calcular(r),prev=calcular(rango(PER,OFF-1));
+  const nom={semana:"esta semana",mes:"este mes",ano:"este año"}[PER];const nomPrev={semana:"la semana pasada",mes:"el mes pasado",ano:"el año pasado"}[PER];
+  const actual=OFF===0;
+  if(k.cobrado>0){out.push(["good","💵",(actual?"":r.lab+": ")+"Cobraste "+money0(k.cobrado)+(actual?" "+nom:"")+". Después de "+money0(k.gastoTot)+" de gastos y apartar "+money0(k.impuestos)+" para impuestos, te quedan <b>"+money0(k.libre)+" libres</b>."])}
+  else out.push(["info","📭",actual?"Todavía no hay cobros registrados "+nom+". Recuerda registrar cada pago en la app de la compañía.":"No hubo cobros en este periodo."]);
+  if(prev.cobrado>0&&k.cobrado>0){const d=(k.ganancia-prev.ganancia)/Math.abs(prev.ganancia||1)*100;if(Math.abs(d)>=10)out.push([d>0?"good":"warn",d>0?"📈":"📉","Tu ganancia "+(d>0?"subió ":"bajó ")+Math.round(Math.abs(d))+"% comparado con "+nomPrev+" ("+money0(prev.ganancia)+" → "+money0(k.ganancia)+")."])}
+  if(k.cobrado>0){const m=k.ganancia/k.ingreso*100;if(m<40&&k.gastoTot>0)out.push(["warn","⚠️","Tus gastos se llevaron el "+Math.round(100-m)+"% de lo que cobraste. Revisa en qué se fue el dinero."])}
+  // gasto que se disparó (mes actual vs promedio 3 meses)
+  const t=today(),mk=t.slice(0,7);const cats={};S.gastos.forEach(g=>{const m=(g.fecha||"").slice(0,7);if(!m)return;cats[g.categoria]=cats[g.categoria]||{};cats[g.categoria][m]=(cats[g.categoria][m]||0)+num(g.monto)});
+  const mesesAnt=[1,2,3].map(i=>{const d=new Date(toD(t).getFullYear(),toD(t).getMonth()-i,1);return dStr(d).slice(0,7)});
+  Object.entries(cats).forEach(([c,v])=>{const now=v[mk]||0,avg=mesesAnt.reduce((a,m)=>a+(v[m]||0),0)/3;if(avg>20&&now>avg*1.3)out.push(["warn","🧴","Este mes llevas "+money0(now)+" en "+esc(c)+", "+Math.round((now/avg-1)*100)+"% más que tu promedio ("+money0(avg)+")."])});
+  // mejor servicio por hora (últimos 90 días)
+  const ps=porServicio({a:addDays(t,-90),b:t}).filter(x=>x.n>=2);
+  if(ps.length>=2){const best=ps.slice().sort((a,b)=>b.porHora-a.porHora)[0];out.push(["info","🏆","En los últimos 3 meses, <b>"+esc(best.nombre)+"</b> es lo que más te deja por hora: unos "+money0(best.porHora)+" por hora de trabajo."])}
+  // te deben
+  const deben=S.citas.filter(c=>c.estado==="completada"&&saldoCita(c)>0.5);
+  if(deben.length)out.push(["warn","🧾","Te deben "+money0(deben.reduce((a,c)=>a+saldoCita(c),0))+" de "+deben.length+" cita"+(deben.length>1?"s":"")+" completada"+(deben.length>1?"s":"")+". Cóbralas desde la app de la compañía."]);
+  // millas sin registrar
+  const sinMi=S.citas.filter(c=>c.estado==="completada"&&c.fecha>=addDays(t,-30)&&!S.millas.some(m=>m.citaId===c.id));
+  if(sinMi.length&&cfg.metodoAuto==="millas")out.push(["info","🚗",sinMi.length+" cita"+(sinMi.length>1?"s":"")+" de los últimos 30 días no tiene"+(sinMi.length>1?"n":"")+" millas registradas. Con unas 20 millas por cita serían unos "+money0(sinMi.length*20*tarifaMilla())+" más de deducción."]);
+  // pago trimestral al IRS
+  const y=toD(t).getFullYear();const qs=trimestres(y).concat(trimestres(y-1));const q=qs.filter(x=>x.vence>=t).sort((a,b)=>a.vence.localeCompare(b.vence))[0];
+  if(q){const dias=Math.round((toD(q.vence)-toD(t))/864e5);if(dias<=45){const kq=calcular({a:q.a,b:q.b});const fed=kq.se+kq.renta;const pag=S.impuestos.filter(p=>p.trimestre===q.a.slice(0,4)+"-Q"+q.n).reduce((a,p)=>a+num(p.monto),0);
+    if(fed-pag>1)out.push(["warn","🏛️","Faltan "+dias+" días para el pago estimado al IRS (vence el "+fDate(q.vence,{day:"numeric",month:"long"})+"). Para ese trimestre aparta unos <b>"+money0(fed-pag)+"</b>."])}}
+  if(!Object.keys(C().costos).length)out.push(["info","⚙️","Ve a Ajustes y ponle a cada servicio cuánto gastas en productos y cuántas horas te toma. Así te digo cuánto te deja cada trabajo de verdad."]);
+  return out}
+
+// ---------- vistas ----------
+function selPer(){return '<div class="per"><button class="nav" data-a="prev" aria-label="Anterior">‹</button><div class="seg">'+[["semana","Semana"],["mes","Mes"],["ano","Año"]].map(([k,l])=>'<button data-a="per" data-v="'+k+'" class="'+(PER===k?"on":"")+'">'+l+'</button>').join("")+'</div><button class="nav" data-a="next" aria-label="Siguiente" '+(OFF>=0?"disabled style='opacity:.35'":"")+'>›</button></div><div class="lbl">'+esc(rango(PER,OFF).lab)+'</div>'}
+function vResumen(){const r=rango(PER,OFF),k=calcular(r),cfg=C();
+  let h=selPer();
+  h+='<div class="hero"><div class="k">Te quedó libre</div><div class="v">'+money(k.libre)+'</div><div class="s">Después de gastos y de apartar '+money(k.impuestos)+' para impuestos</div></div>';
+  h+='<div class="tips">'+consejos().map(([c,i,t])=>'<div class="tip '+c+'"><span class="ic">'+i+'</span><div>'+t+'</div></div>').join("")+'</div>';
+  h+='<div class="card"><h2>Cómo se calcula</h2><div class="kv"><div><span>Cobrado</span><span>'+money(k.cobrado)+'</span></div>'+
+    (cfg.salesIncluido?'<div class="sub"><span>− Sales tax incluido ('+cfg.salesPct+'%), es del estado</span><span>'+money(k.sales)+'</span></div>':"")+
+    '<div><span>− Gastos</span><span class="neg">'+money(k.gastoTot)+'</span></div><div class="tot"><span>Ganancia antes de impuestos</span><span>'+money(k.ganancia)+'</span></div>'+
+    '<div><span>− Apartar para impuestos</span><span class="neg">'+money(k.impuestos)+'</span></div>'+
+    (k.se?'<div class="sub"><span>Seguro Social y Medicare (15.3%)</span><span>'+money(k.se)+'</span></div>':"")+
+    '<div class="sub"><span>Impuesto federal sobre la renta ('+cfg.pctRenta+'%)</span><span>'+money(k.renta)+'</span></div>'+
+    (cfg.boEstado?'<div class="sub"><span>B&amp;O del estado ('+cfg.boEstadoPct+'%)</span><span>'+money(k.boE)+'</span></div>':"")+
+    (cfg.boCiudad?'<div class="sub"><span>B&amp;O de Vancouver ('+cfg.boCiudadPct+'%)</span><span>'+money(k.boC)+'</span></div>':"")+
+    '<div class="tot"><span>Te quedó libre</span><span class="'+(k.libre<0?"neg":"pos")+'">'+money(k.libre)+'</span></div></div>'+
+    (k.dedMillas?'<p class="note">Los impuestos ya toman en cuenta '+Math.round(k.mi)+' millas de trabajo ('+money(k.dedMillas)+' de deducción).</p>':"")+'</div>';
+  const cats={};k.gastos.forEach(g=>cats[g.categoria||"Otro"]=(cats[g.categoria||"Otro"]||0)+num(g.monto));const ce=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  if(ce.length){const mx=ce[0][1];h+='<div class="card"><h2>En qué se fue el dinero</h2>'+ce.map(([c,v])=>'<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:14px"><span>'+esc(c)+'</span><b>'+money(v)+'</b></div><div class="bar"><i style="width:'+Math.round(v/mx*100)+'%"></i></div></div>').join("")+'</div>'}
+  return h}
+function vTrabajos(){const r=rango(PER,OFF),cfg=C();let h=selPer();
+  const cs=S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const ps=porServicio(r);
+  h+='<div class="card"><h2>Lo que más te dejó</h2>'+(ps.length?'<div class="list">'+ps.map(x=>'<div class="row"><div><div class="t">'+esc(x.nombre)+'</div><div class="s">'+x.n+' trabajo'+(x.n>1?"s":"")+' · cobrado '+money0(x.cobrado)+' · costo '+money0(x.costo)+'</div></div><div class="r"><b>'+money0(x.gan)+'</b><div class="s">'+money0(x.porHora)+'/hora</div></div></div>').join("")+'</div>':'<div class="empty">No hay trabajos completados en este periodo.</div>')+'</div>';
+  h+='<div class="card"><h2>Cada trabajo</h2>'+(cs.length?'<div class="list">'+cs.map(c=>{const cc=costoCita(c),cob=c.usaMembresia?0:num(c.precio),g=cob-cc.prod-cc.millasCosto;
+    return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div></div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
+    '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. Los costos por servicio se cambian en Ajustes.</p></div>';
+  return h}
+function vImpuestos(){const t=today(),y=toD(t).getFullYear(),cfg=C();const k=calcular({a:y+"-01-01",b:t});
+  const pagado=S.impuestos.filter(p=>(p.trimestre||"").startsWith(String(y))).reduce((a,p)=>a+num(p.monto),0);
+  let h='<h1>Impuestos '+y+'</h1>';
+  h+='<div class="hero"><div class="k">Deberías tener apartado</div><div class="v">'+money(Math.max(0,k.impuestos-pagado))+'</div><div class="s">Estimado del año: '+money(k.impuestos)+' · Ya pagaste: '+money(pagado)+'</div></div>';
+  h+='<div class="card"><h2>En lo que va del año</h2><div class="kv"><div><span>Ingresos (sin sales tax)</span><span>'+money(k.ingreso)+'</span></div><div><span>− Gastos que se descuentan</span><span>'+money(k.gastoDeducible)+'</span></div>'+(cfg.metodoAuto==="millas"?'<div><span>− Millas ('+Math.round(k.mi)+' mi)</span><span>'+money(k.dedMillas)+'</span></div>':"")+'<div class="tot"><span>Ganancia que paga impuestos</span><span>'+money(k.gravable)+'</span></div><div><span>Seguro Social y Medicare</span><span>'+money(k.se)+'</span></div><div><span>Federal sobre la renta ('+cfg.pctRenta+'%)</span><span>'+money(k.renta)+'</span></div>'+(cfg.boEstado?'<div><span>B&amp;O del estado</span><span>'+money(k.boE)+'</span></div>':"")+(cfg.boCiudad?'<div><span>B&amp;O de Vancouver</span><span>'+money(k.boC)+'</span></div>':"")+'<div class="tot"><span>Total estimado</span><span>'+money(k.impuestos)+'</span></div></div>'+
+    (cfg.metodoAuto==="millas"?'<p class="note">Usas la deducción por millas, así que la gasolina y el mantenimiento del vehículo no se descuentan otra vez.</p>':"")+'</div>';
+  h+='<div class="card"><h2>Pagos estimados al IRS</h2><div class="list">'+trimestres(y).map(q=>{const kq=calcular({a:q.a,b:q.b<t?q.b:t}),fed=q.a<=t?kq.se+kq.renta:0,id=y+"-Q"+q.n,pg=S.impuestos.filter(p=>p.trimestre===id).reduce((a,p)=>a+num(p.monto),0);
+    const est=q.vence<t?(fed<1&&!pg?'<span class="s">Sin ganancia</span>':pg>=fed-1?'<span class="pos">Pagado</span>':'<span class="neg">Vencido</span>'):q.a>t?'<span class="s">Pendiente</span>':'<span>Vence '+esc(fDate(q.vence,{day:"numeric",month:"short"}))+'</span>';
+    return '<div class="row"><div><div class="t">Trimestre '+q.n+' <span class="s">('+esc(fDate(q.a))+' – '+esc(fDate(q.b))+')</span></div><div class="s">Federal estimado '+money0(fed)+(pg?" · pagaste "+money0(pg):"")+'</div></div><div class="r">'+est+'<div><button class="btn" style="padding:4px 10px;font-size:12px;margin-top:4px" data-a="pagarQ" data-v="'+id+'">Registrar pago</button></div></div></div>'}).join("")+'</div><p class="note">Se paga en IRS Direct Pay o con el formulario 1040-ES. El B&amp;O se paga aparte al Departamento de Ingresos de Washington.</p></div>';
+  const lst=S.impuestos.filter(p=>(p.trimestre||"").startsWith(String(y))).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  if(lst.length)h+='<div class="card"><h2>Impuestos que ya pagaste</h2><div class="list">'+lst.map(p=>'<div class="row"><div><div class="t">'+esc(p.trimestre)+'</div><div class="s">'+esc(fDate(p.fecha))+'</div></div><div class="r"><b>'+money(p.monto)+'</b><div><button class="btn" style="padding:3px 10px;font-size:12px" data-a="delImp" data-v="'+p.id+'">Borrar</button></div></div></div>').join("")+'</div></div>';
+  h+='<p class="note">Todo esto es un estimado para que sepas cuánto apartar. Confirma las cantidades exactas con tu contador.</p>';
+  return h}
+function vAjustes(){const cfg=C();const servs=[...new Set(S.servicios.map(s=>s.nombre).filter(Boolean).concat(S.citas.flatMap(c=>itemsOf(c).map(x=>x.servicio)).filter(Boolean)))].sort();
+  let h='<h1>Ajustes</h1><form class="card" data-f="cfg"><h2>Impuestos</h2>'+
+  '<div class="f"><label for="a_r">Impuesto federal sobre la renta (%)</label><input id="a_r" name="pctRenta" inputmode="decimal" value="'+cfg.pctRenta+'"></div><p class="note">Para la mayoría de los negocios chicos es entre 10% y 12%. Pregúntale a tu contador cuál es el tuyo.</p>'+
+  '<label class="chk"><input type="checkbox" name="seguroSocial" '+(cfg.seguroSocial?"checked":"")+'> Contar Seguro Social y Medicare (15.3%)</label>'+
+  '<label class="chk"><input type="checkbox" name="boCiudad" '+(cfg.boCiudad?"checked":"")+'> Contar B&amp;O de la ciudad de Vancouver</label><div class="f"><label for="a_bc">B&amp;O de Vancouver (%)</label><input id="a_bc" name="boCiudadPct" inputmode="decimal" value="'+cfg.boCiudadPct+'"></div>'+
+  '<label class="chk"><input type="checkbox" name="boEstado" '+(cfg.boEstado?"checked":"")+'> Contar B&amp;O del estado</label><div class="f"><label for="a_be">B&amp;O del estado (%)</label><input id="a_be" name="boEstadoPct" inputmode="decimal" value="'+cfg.boEstadoPct+'"></div><p class="note">Si tu negocio es chico, el crédito para negocios pequeños de Washington normalmente te deja sin B&amp;O estatal que pagar. Déjalo apagado si es tu caso.</p>'+
+  '<label class="chk"><input type="checkbox" name="salesIncluido" '+(cfg.salesIncluido?"checked":"")+'> Mis cobros ya incluyen sales tax</label><div class="f"><label for="a_st">Sales tax (%)</label><input id="a_st" name="salesPct" inputmode="decimal" value="'+cfg.salesPct+'"></div>'+
+  '<h2 style="margin-top:18px">Vehículo</h2><div class="f"><label for="a_m">Cómo descuento el vehículo</label><select id="a_m" name="metodoAuto"><option value="millas" '+(cfg.metodoAuto==="millas"?"selected":"")+'>Por millas (tarifa del IRS)</option><option value="gastos" '+(cfg.metodoAuto==="gastos"?"selected":"")+'>Por gastos reales (gasolina, mantenimiento)</option></select></div>'+
+  '<div class="f"><label for="a_cm">Lo que te cuesta de verdad cada milla</label><input id="a_cm" name="costoMilla" inputmode="decimal" value="'+cfg.costoMilla+'"></div><p class="note">Gasolina y desgaste. Se usa para saber cuánto te dejó cada trabajo.</p>'+
+  '<h2 style="margin-top:18px">Costo de cada servicio</h2><p class="note" style="margin-top:0">Cuánto gastas en productos y cuántas horas te toma cada uno.</p><div class="svrow svhd"><span>Servicio</span><span>Productos $</span><span>Horas</span></div>'+
+  servs.map((n,i)=>{const c=cfg.costos[n]||{};return '<div class="svrow"><span>'+esc(n)+'</span><input name="c_'+i+'" data-n="'+esc(n)+'" inputmode="decimal" value="'+esc(c.costo!=null?c.costo:"")+'" placeholder="0" aria-label="Productos '+esc(n)+'"><input name="h_'+i+'" inputmode="decimal" value="'+esc(c.horas!=null?c.horas:"")+'" placeholder="3" aria-label="Horas '+esc(n)+'"></div>'}).join("")+
+  '<div class="btns"><button class="btn pri" type="submit">Guardar</button></div></form>'+
+  '<div class="card"><h2>De dónde salen los números</h2><p class="note" style="margin-top:0">Esta app lee sola los cobros, gastos, millas y citas que registras en la app de AutoLuxuries. No tienes que escribir nada dos veces.</p><div class="btns"><a class="btn" href="../">Abrir app de la compañía</a></div></div>';
+  return h}
+
+// ---------- render ----------
+const ICON={resumen:'<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',trabajos:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',impuestos:'<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7"/>',ajustes:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.4 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.7 4.4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'};
+const VIEWS={resumen:vResumen,trabajos:vTrabajos,impuestos:vImpuestos,ajustes:vAjustes};
+function render(){if(!S.ok)return;if(!VIEWS[TAB])TAB="resumen";
+  let m;try{m=VIEWS[TAB]()}catch(e){console.error(e);m='<div class="card">Hubo un error mostrando esta pantalla: '+esc(e.message)+'</div>'}
+  $("#app").innerHTML='<header><div class="brand"><b>AutoLuxuries</b><span>Números</span></div><a href="../">App de la compañía ↗</a></header><main>'+m+'</main><nav class="tabs">'+[["resumen","Resumen"],["trabajos","Trabajos"],["impuestos","Impuestos"],["ajustes","Ajustes"]].map(([k,l])=>'<button data-a="tab" data-v="'+k+'" class="'+(TAB===k?"on":"")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[k]+'</svg>'+l+'</button>').join("")+'</nav>'}
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
+  if(a==="tab"){TAB=v;location.hash=v;window.scrollTo(0,0);render()}
+  else if(a==="per"){PER=v;OFF=0;render()}
+  else if(a==="prev"){OFF--;render()}
+  else if(a==="next"){if(OFF<0){OFF++;render()}}
+  else if(a==="pagarQ"){const m=prompt("¿Cuánto pagaste al IRS para "+v+"?");if(m&&num(m)>0){const id=uid();await setDoc(doc(fs,"impuestos",id),{trimestre:v,monto:num(m),fecha:today(),creado:Date.now()});toast("Pago registrado")}}
+  else if(a==="delImp"){if(confirm("¿Borrar este pago?")){await deleteDoc(doc(fs,"impuestos",v));toast("Borrado")}}
+});
+document.addEventListener("submit",async e=>{const f=e.target;if(f.dataset.f!=="cfg")return;e.preventDefault();
+  const costos={};f.querySelectorAll("input[data-n]").forEach(inp=>{const h=f.querySelector('[name="h_'+inp.name.slice(2)+'"]');if(inp.value!==""||h.value!=="")costos[inp.dataset.n]={costo:num(inp.value),horas:num(h.value)}});
+  const o={pctRenta:num(f.pctRenta.value),seguroSocial:f.seguroSocial.checked,boCiudad:f.boCiudad.checked,boCiudadPct:num(f.boCiudadPct.value),boEstado:f.boEstado.checked,boEstadoPct:num(f.boEstadoPct.value),salesIncluido:f.salesIncluido.checked,salesPct:num(f.salesPct.value),metodoAuto:f.metodoAuto.value,costoMilla:num(f.costoMilla.value),costos,actualizado:Date.now()};
+  try{await setDoc(doc(fs,"ajustes","numeros"),o);toast("Guardado")}catch(err){toast("No se pudo guardar")}});
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(VIEWS[h]&&h!==TAB){TAB=h;render()}});
+
+// ---------- datos ----------
+let renderT=null;const later=()=>{clearTimeout(renderT);renderT=setTimeout(render,60)};
+function start(){const cols=["citas","pagos","gastos","millas","servicios","impuestos"];let pend=cols.length+1;const done=()=>{if(--pend<=0&&!S.ok){S.ok=true;render()}};
+  cols.forEach(c=>{let first=true;onSnapshot(collection(fs,c),snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(first){first=false;done()}else later()},err=>{console.error(err);if(first){first=false;done()}})});
+  let f1=true;onSnapshot(doc(fs,"ajustes","numeros"),d=>{S.cfg=d.exists()?d.data():{};if(f1){f1=false;done()}else later()},()=>{if(f1){f1=false;done()}});
+  setTimeout(()=>{if(!S.ok){S.ok=true;render()}},4000)}
+function login(err){$("#app").innerHTML='<div class="login"><form id="lg"><div class="logo">AutoLuxuries<br><span style="font-size:15px;opacity:.7;letter-spacing:.15em">NÚMEROS</span></div><p style="opacity:.75;margin:0 0 6px">Entra con el mismo correo y contraseña de tu app de la compañía.</p><input id="lg_e" type="email" autocomplete="username" placeholder="Correo" required><input id="lg_p" type="password" autocomplete="current-password" placeholder="Contraseña" required>'+(err?'<p style="color:#f08080;margin:0">'+esc(err)+'</p>':"")+'<button id="lg_btn" type="submit">Entrar</button></form></div>';
+  $("#lg").addEventListener("submit",async e=>{e.preventDefault();try{await setPersistence(auth,browserLocalPersistence)}catch(x){}try{await signInWithEmailAndPassword(auth,$("#lg_e").value.trim(),$("#lg_p").value)}catch(x){login("Correo o contraseña incorrectos.")}})}
+onAuthStateChanged(auth,u=>{if(u){$("#app").innerHTML='<div class="login"><div class="logo">Cargando tus números…</div></div>';start()}else login()});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
