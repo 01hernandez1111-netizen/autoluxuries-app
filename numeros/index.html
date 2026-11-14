@@ -91,6 +91,19 @@ nav.tabs svg{width:22px;height:22px}
 .bar i{display:block;height:100%;background:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;z-index:9}
 .empty{color:var(--muted);font-size:14px;padding:6px 0}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sheet .hd button{border:0;background:none;font-weight:600;color:var(--muted);cursor:pointer}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.recibo{width:100%;border-radius:12px;border:1px solid var(--line);display:block;margin-top:8px}
+.fileh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.goal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.goal .big{font-family:var(--display);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.goal .bar{height:12px}
+.goal .bar i{background:var(--ok)}
+.addbtn{display:flex;gap:8px}
+.addbtn .btn{flex:1}
 </style>
 </head>
 <body>
@@ -98,14 +111,14 @@ nav.tabs svg{width:22px;height:22px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fbApp = initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
 const auth = getAuth(fbApp);
 let fs; try{fs=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){fs=initializeFirestore(fbApp,{})}
 
 // ---------- estado ----------
-const S={citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],cfg:{},ok:false};
+const S={citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],gastosFijos:[],cfg:{},ok:false};
 let TAB=(location.hash||"#resumen").slice(1), PER="semana", OFF=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -199,12 +212,85 @@ function consejos(){const cfg=C(),out=[];const r=rango(PER,OFF),k=calcular(r),pr
   if(!Object.keys(C().costos).length)out.push(["info","⚙️","Ve a Ajustes y ponle a cada servicio cuánto gastas en productos y cuántas horas te toma. Así te digo cuánto te deja cada trabajo de verdad."]);
   return out}
 
+// ---------- hoja (ventana de abajo) ----------
+function sheet(title,body,foot,form){closeSheet();const ov=document.createElement("div");ov.className="ov";ov.id="ov";
+  ov.innerHTML='<'+(form?'form data-f="'+form+'"':'div')+' class="sheet" role="dialog" aria-label="'+esc(title)+'"><div class="hd"><h1 style="font-size:19px">'+esc(title)+'</h1><button type="button" data-a="close">Cerrar</button></div>'+body+'<div class="btns" style="margin-top:16px">'+(foot||"")+'</div></'+(form?"form":"div")+'>';
+  ov.addEventListener("click",e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov)}
+function closeSheet(){const o=$("#ov");if(o)o.remove()}
+const opt=(arr,sel)=>arr.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return '<option value="'+esc(v)+'" '+(String(v)===String(sel)?"selected":"")+'>'+esc(l)+'</option>'}).join("");
+async function guardar(col,o,id){id=id||uid();const d=JSON.parse(JSON.stringify(o));await setDoc(doc(fs,col,id),d);return id}
+
+// ---------- gastos ----------
+const CAT_GASTO=["Químicos y productos","Gasolina","Equipo y herramientas","Mantenimiento del vehículo","Publicidad","Seguro","Teléfono e internet","Licencias y permisos","Otro"];
+let RECIBO_NUEVO=null;
+async function comprimir(file){const url=URL.createObjectURL(file);
+  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+    const k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight));const w=Math.round(img.naturalWidth*k),h=Math.round(img.naturalHeight*k);
+    const cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(img,0,0,w,h);
+    let q=.7,d=cv.toDataURL("image/jpeg",q);while(d.length>850000&&q>.3){q-=.1;d=cv.toDataURL("image/jpeg",q)}return d}finally{URL.revokeObjectURL(url)}}
+let reciboUnsub=null;
+function cargarRecibo(gid){if(reciboUnsub){try{reciboUnsub()}catch(e){}}reciboUnsub=onSnapshot(query(collection(fs,"fotos"),where("gastoId","==",gid)),snap=>{const box=$("#g_rec");if(!box)return;const f=snap.docs[0];
+  box.innerHTML=f?'<img class="recibo" src="'+f.data().data+'" alt="Recibo"><div class="btns"><button type="button" class="btn danger" data-a="delRecibo" data-v="'+f.id+'">Quitar recibo</button></div>':'<p class="note">Sin recibo.</p>'},()=>{})}
+function formGasto(id){const g=id?S.gastos.find(x=>x.id===id):{fecha:today(),categoria:"Químicos y productos"};if(!g)return;RECIBO_NUEVO=null;
+  sheet(id?"Editar gasto":"Nuevo gasto",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="g2"><div class="f"><label for="g_m">Monto</label><input id="g_m" name="monto" inputmode="decimal" value="'+esc(g.monto!=null?g.monto:"")+'" placeholder="0.00"></div><div class="f"><label for="g_f">Fecha</label><input id="g_f" name="fecha" type="date" value="'+esc(g.fecha)+'"></div></div><div class="f"><label for="g_c">Categoría</label><select id="g_c" name="categoria">'+opt(CAT_GASTO,g.categoria)+'</select></div><div class="f"><label for="g_d">Descripción</label><input id="g_d" name="desc" value="'+esc(g.desc||"")+'" placeholder="Ej: shampoo y cera"></div>'+(g.fijoId?'<p class="note">Este gasto lo registró solo tu gasto fijo.</p>':"")+
+    '<div class="f"><label>Recibo</label><div id="g_rec">'+(id?'<p class="note">Cargando…</p>':'<p class="note">Sin recibo.</p>')+'</div><div class="btns" style="margin-top:4px"><label class="btn" for="g_file">📷 '+(id?"Cambiar o agregar recibo":"Tomar foto del recibo")+'</label></div><input type="file" accept="image/*" class="fileh" id="g_file"></div>',
+    (id?'<button type="button" class="btn danger" data-a="delGasto" data-v="'+id+'">Borrar</button>':'<button type="button" class="btn" data-a="close">Cancelar</button>')+'<button type="submit" class="btn pri">Guardar gasto</button>',"gasto");
+  if(id)cargarRecibo(id)}
+async function subirReciboInput(input){const f=input.files[0];input.value="";if(!f)return;toast("Procesando foto…");try{RECIBO_NUEVO=await comprimir(f);$("#g_rec").innerHTML='<img class="recibo" src="'+RECIBO_NUEVO+'" alt="Recibo nuevo"><p class="note">Se guarda al tocar "Guardar gasto".</p>'}catch(e){toast("No se pudo leer la foto")}}
+async function submitGasto(f){const id=f.id.value;const o={monto:num(f.monto.value),fecha:f.fecha.value||today(),categoria:f.categoria.value,desc:f.desc.value.trim()};if(!o.monto)return toast("Escribe el monto.");
+  const prev=id?S.gastos.find(x=>x.id===id)||{}:{};if(prev.fijoId){o.fijoId=prev.fijoId;o.mes=prev.mes}
+  const gid=await guardar("gastos",Object.assign(o,RECIBO_NUEVO||prev.recibo?{recibo:true}:{}),id||undefined);
+  if(RECIBO_NUEVO){const fid="recibo-"+gid;await guardar("fotos",{gastoId:gid,citaId:"",tipo:"recibo",data:RECIBO_NUEVO,fecha:o.fecha,creado:Date.now()},fid)}
+  RECIBO_NUEVO=null;closeSheet();toast("Gasto guardado")}
+async function borrarGasto(id){const g=S.gastos.find(x=>x.id===id);if(!g||!confirm("¿Borrar este gasto?"))return;
+  await deleteDoc(doc(fs,"gastos",id));try{await deleteDoc(doc(fs,"fotos","recibo-"+id))}catch(e){}
+  if(g.fijoId){const fx=S.gastosFijos.find(x=>x.id===g.fijoId);if(fx)await guardar("gastosFijos",Object.assign({},fx,{saltados:[...new Set((fx.saltados||[]).concat([g.mes]))],id:undefined}),fx.id)}
+  closeSheet();toast("Gasto borrado")}
+
+// ---------- gastos fijos ----------
+const mesKey=s=>(s||"").slice(0,7);
+function mesesEntre(a,b){const out=[];let [y,m]=a.split("-").map(Number);const [yb,mb]=b.split("-").map(Number);while(y<yb||(y===yb&&m<=mb)){out.push(y+"-"+pad(m));m++;if(m>12){m=1;y++}}return out}
+function diaDe(mes,dia){const [y,m]=mes.split("-").map(Number);const ult=new Date(y,m,0).getDate();return mes+"-"+pad(Math.min(dia,ult))}
+let fijosCorriendo=false;
+async function aplicarFijos(){if(fijosCorriendo)return;fijosCorriendo=true;try{const t=today();
+  for(const fx of S.gastosFijos){if(fx.activo===false||!fx.desde)continue;
+    for(const mes of mesesEntre(fx.desde,mesKey(t))){const fecha=diaDe(mes,num(fx.dia)||1);if(fecha>t)continue;if((fx.saltados||[]).includes(mes))continue;
+      const gid="fijo-"+fx.id+"-"+mes;if(S.gastos.some(g=>g.id===gid||(g.fijoId===fx.id&&g.mes===mes)))continue;
+      await guardar("gastos",{monto:num(fx.monto),fecha,categoria:fx.categoria,desc:fx.desc,fijoId:fx.id,mes},gid)}}}catch(e){console.error(e)}finally{fijosCorriendo=false}}
+function formFijo(id){const fx=id?S.gastosFijos.find(x=>x.id===id):{dia:1,categoria:"Seguro",activo:true};if(!fx)return;
+  sheet(id?"Editar gasto fijo":"Nuevo gasto fijo",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="x_d">Qué es</label><input id="x_d" name="desc" value="'+esc(fx.desc||"")+'" placeholder="Ej: seguro del negocio, teléfono"></div><div class="g2"><div class="f"><label for="x_m">Monto al mes</label><input id="x_m" name="monto" inputmode="decimal" value="'+esc(fx.monto!=null?fx.monto:"")+'" placeholder="0.00"></div><div class="f"><label for="x_dia">Día que se cobra</label><input id="x_dia" name="dia" inputmode="numeric" value="'+esc(fx.dia||1)+'"></div></div><div class="f"><label for="x_c">Categoría</label><select id="x_c" name="categoria">'+opt(CAT_GASTO,fx.categoria)+'</select></div><label class="chk"><input type="checkbox" name="activo" '+(fx.activo!==false?"checked":"")+'> Activo (se registra solo cada mes)</label><p class="note">Se anota solo ese día de cada mes, empezando este mes. Si un mes cambió el monto, abre ese gasto y corrígelo.</p>',
+    (id?'<button type="button" class="btn danger" data-a="delFijo" data-v="'+id+'">Borrar</button>':'<button type="button" class="btn" data-a="close">Cancelar</button>')+'<button type="submit" class="btn pri">Guardar</button>',"fijo")}
+async function submitFijo(f){const id=f.id.value;const prev=id?S.gastosFijos.find(x=>x.id===id)||{}:{};
+  const o={desc:f.desc.value.trim(),monto:num(f.monto.value),dia:Math.min(31,Math.max(1,num(f.dia.value)||1)),categoria:f.categoria.value,activo:f.activo.checked,desde:prev.desde||mesKey(today()),saltados:prev.saltados||[]};
+  if(!o.desc||!o.monto)return toast("Escribe qué es y el monto.");await guardar("gastosFijos",o,id||undefined);closeSheet();toast("Gasto fijo guardado");setTimeout(aplicarFijos,300)}
+
+// ---------- metas y proyección ----------
+function diasMes(s){const d=toD(s);return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()}
+function servicioTipico(){const t=today();const ps=porServicio({a:addDays(t,-90),b:t});if(!ps.length)return null;const top=ps.slice().sort((a,b)=>b.n-a.n)[0];return {nombre:top.nombre,gan:top.gan/top.n}}
+function bloqueMeta(){const cfg=C(),meta=num(cfg.metaMes);const t=today();if(PER==="ano"||OFF!==0)return "";
+  const r=PER==="semana"?rango("semana",0):rango("mes",0);const k=calcular(r);
+  const metaP=PER==="semana"?meta*12/52:meta;
+  const transc=PER==="semana"?((toD(t).getDay()+6)%7)+1:toD(t).getDate(),tot=PER==="semana"?7:diasMes(t);
+  const proy=k.ganancia/transc*tot;
+  if(!meta)return '<div class="goal"><h2>Tu meta</h2><p class="note" style="margin:0">Ponte una meta de ganancia al mes en Ajustes y aquí verás cuánto llevas y cuánto te falta.</p><div class="btns"><button class="btn" data-a="tab" data-v="ajustes">Poner mi meta</button></div></div>';
+  const pct=Math.max(0,Math.min(100,k.ganancia/metaP*100)),falta=metaP-k.ganancia,st=servicioTipico();
+  let h='<div class="goal"><h2>Meta '+(PER==="semana"?"de la semana":"del mes")+'</h2><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="big">'+money0(k.ganancia)+'</span><span class="s" style="color:var(--muted)">de '+money0(metaP)+'</span></div><div class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></div>';
+  if(falta<=0)h+='<p style="margin:10px 0 0">🎉 <b>¡Ya llegaste a tu meta!</b> Vas '+money0(-falta)+' arriba.</p>';
+  else h+='<p style="margin:10px 0 0">Te faltan <b>'+money0(falta)+'</b>'+(st&&st.gan>0?', unos <b>'+Math.ceil(falta/st.gan)+' '+esc(st.nombre)+'</b>':"")+'.</p>';
+  h+='<p class="note">A este ritmo vas a cerrar '+(PER==="semana"?"la semana":"el mes")+' con unos <b>'+money0(proy)+'</b> de ganancia'+(proy>=metaP?" ✅":"")+'.</p></div>';
+  return h}
+function proyeccionAno(){const t=today(),y=toD(t).getFullYear();const k=calcular({a:y+"-01-01",b:t});const dias=Math.round((toD(t)-toD(y+"-01-01"))/864e5)+1;if(dias<14||k.cobrado<=0)return "";
+  const tot=(y%4===0?366:365);const g=k.ganancia/dias*tot,l=k.libre/dias*tot;
+  return '<div class="tip info"><span class="ic">🔮</span><div>A este ritmo vas a terminar '+y+' con unos <b>'+money0(g)+'</b> de ganancia y unos <b>'+money0(l)+'</b> libres después de impuestos.</div></div>'}
+
 // ---------- vistas ----------
 function selPer(){return '<div class="per"><button class="nav" data-a="prev" aria-label="Anterior">‹</button><div class="seg">'+[["semana","Semana"],["mes","Mes"],["ano","Año"]].map(([k,l])=>'<button data-a="per" data-v="'+k+'" class="'+(PER===k?"on":"")+'">'+l+'</button>').join("")+'</div><button class="nav" data-a="next" aria-label="Siguiente" '+(OFF>=0?"disabled style='opacity:.35'":"")+'>›</button></div><div class="lbl">'+esc(rango(PER,OFF).lab)+'</div>'}
 function vResumen(){const r=rango(PER,OFF),k=calcular(r),cfg=C();
   let h=selPer();
+  h+='<div class="addbtn"><button class="btn pri" data-a="newGasto">+ Gasto</button></div>';
   h+='<div class="hero"><div class="k">Te quedó libre</div><div class="v">'+money(k.libre)+'</div><div class="s">Después de gastos y de apartar '+money(k.impuestos)+' para impuestos</div></div>';
-  h+='<div class="tips">'+consejos().map(([c,i,t])=>'<div class="tip '+c+'"><span class="ic">'+i+'</span><div>'+t+'</div></div>').join("")+'</div>';
+  h+=bloqueMeta();
+  h+='<div class="tips">'+(PER==="ano"&&OFF===0?proyeccionAno():"")+consejos().map(([c,i,t])=>'<div class="tip '+c+'"><span class="ic">'+i+'</span><div>'+t+'</div></div>').join("")+'</div>';
   h+='<div class="card"><h2>Cómo se calcula</h2><div class="kv"><div><span>Cobrado</span><span>'+money(k.cobrado)+'</span></div>'+
     (cfg.salesIncluido?'<div class="sub"><span>− Sales tax incluido ('+cfg.salesPct+'%), es del estado</span><span>'+money(k.sales)+'</span></div>':"")+
     '<div><span>− Gastos</span><span class="neg">'+money(k.gastoTot)+'</span></div><div class="tot"><span>Ganancia antes de impuestos</span><span>'+money(k.ganancia)+'</span></div>'+
@@ -226,6 +312,15 @@ function vTrabajos(){const r=rango(PER,OFF),cfg=C();let h=selPer();
     return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div></div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
     '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. Los costos por servicio se cambian en Ajustes.</p></div>';
   return h}
+function vGastos(){const r=rango(PER,OFF);let h=selPer();
+  const gl=S.gastos.filter(g=>enR(r,g.fecha)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const tot=gl.reduce((a,g)=>a+num(g.monto),0);
+  h+='<div class="addbtn"><button class="btn pri" data-a="newGasto">+ Gasto</button><button class="btn" data-a="newFijo">+ Gasto fijo</button></div>';
+  h+='<div class="card"><h2 style="display:flex;justify-content:space-between"><span>Gastos</span><span>'+money(tot)+'</span></h2>'+(gl.length?'<div class="list">'+gl.map(g=>'<div class="row" data-a="editGasto" data-v="'+g.id+'" style="cursor:pointer"><div><div class="t">'+esc(g.desc||g.categoria)+(g.recibo?' <span title="Tiene recibo">📎</span>':"")+(g.fijoId?' <span class="s">· fijo</span>':"")+'</div><div class="s">'+esc(fDate(g.fecha))+' · '+esc(g.categoria||"")+'</div></div><div class="r"><b>'+money(g.monto)+'</b></div></div>').join("")+'</div>':'<div class="empty">No hay gastos en este periodo.</div>')+'</div>';
+  const sinRec=gl.filter(g=>!g.recibo&&!g.fijoId&&num(g.monto)>=75).length;
+  if(sinRec)h+='<div class="tip warn"><span class="ic">📎</span><div>'+sinRec+' gasto'+(sinRec>1?"s":"")+' de $75 o más no tiene'+(sinRec>1?"n":"")+' foto del recibo. Guárdalas por si el IRS te las pide.</div></div>';
+  const fx=S.gastosFijos.slice().sort((a,b)=>num(a.dia)-num(b.dia));const totF=fx.filter(x=>x.activo!==false).reduce((a,x)=>a+num(x.monto),0);
+  h+='<div class="card"><h2 style="display:flex;justify-content:space-between"><span>Gastos fijos cada mes</span><span>'+money(totF)+'</span></h2>'+(fx.length?'<div class="list">'+fx.map(x=>'<div class="row" data-a="editFijo" data-v="'+x.id+'" style="cursor:pointer"><div><div class="t">'+esc(x.desc)+'</div><div class="s">Día '+esc(x.dia)+' · '+esc(x.categoria)+(x.activo===false?" · pausado":"")+'</div></div><div class="r"><b>'+money(x.monto)+'</b></div></div>').join("")+'</div>':'<div class="empty">Agrega lo que pagas cada mes (seguro, teléfono, programas) y se anota solo.</div>')+'</div>';
+  return h}
 function vImpuestos(){const t=today(),y=toD(t).getFullYear(),cfg=C();const k=calcular({a:y+"-01-01",b:t});
   const pagado=S.impuestos.filter(p=>(p.trimestre||"").startsWith(String(y))).reduce((a,p)=>a+num(p.monto),0);
   let h='<h1>Impuestos '+y+'</h1>';
@@ -240,7 +335,7 @@ function vImpuestos(){const t=today(),y=toD(t).getFullYear(),cfg=C();const k=cal
   h+='<p class="note">Todo esto es un estimado para que sepas cuánto apartar. Confirma las cantidades exactas con tu contador.</p>';
   return h}
 function vAjustes(){const cfg=C();const servs=[...new Set(S.servicios.map(s=>s.nombre).filter(Boolean).concat(S.citas.flatMap(c=>itemsOf(c).map(x=>x.servicio)).filter(Boolean)))].sort();
-  let h='<h1>Ajustes</h1><form class="card" data-f="cfg"><h2>Impuestos</h2>'+
+  let h='<h1>Ajustes</h1><form class="card" data-f="cfg"><h2>Tu meta</h2><div class="f"><label for="a_meta">Meta de ganancia al mes (antes de impuestos)</label><input id="a_meta" name="metaMes" inputmode="decimal" value="'+esc(cfg.metaMes||"")+'" placeholder="Ej: 4000"></div><p class="note">La meta de la semana se calcula sola a partir de esta.</p><h2 style="margin-top:18px">Impuestos</h2>'+
   '<div class="f"><label for="a_r">Impuesto federal sobre la renta (%)</label><input id="a_r" name="pctRenta" inputmode="decimal" value="'+cfg.pctRenta+'"></div><p class="note">Para la mayoría de los negocios chicos es entre 10% y 12%. Pregúntale a tu contador cuál es el tuyo.</p>'+
   '<label class="chk"><input type="checkbox" name="seguroSocial" '+(cfg.seguroSocial?"checked":"")+'> Contar Seguro Social y Medicare (15.3%)</label>'+
   '<label class="chk"><input type="checkbox" name="boCiudad" '+(cfg.boCiudad?"checked":"")+'> Contar B&amp;O de la ciudad de Vancouver</label><div class="f"><label for="a_bc">B&amp;O de Vancouver (%)</label><input id="a_bc" name="boCiudadPct" inputmode="decimal" value="'+cfg.boCiudadPct+'"></div>'+
@@ -255,29 +350,38 @@ function vAjustes(){const cfg=C();const servs=[...new Set(S.servicios.map(s=>s.n
   return h}
 
 // ---------- render ----------
-const ICON={resumen:'<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',trabajos:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',impuestos:'<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7"/>',ajustes:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.4 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.7 4.4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'};
-const VIEWS={resumen:vResumen,trabajos:vTrabajos,impuestos:vImpuestos,ajustes:vAjustes};
+const ICON={gastos:'<path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/>',resumen:'<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',trabajos:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',impuestos:'<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7"/>',ajustes:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.4 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.7 4.4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'};
+const VIEWS={resumen:vResumen,trabajos:vTrabajos,gastos:vGastos,impuestos:vImpuestos,ajustes:vAjustes};
 function render(){if(!S.ok)return;if(!VIEWS[TAB])TAB="resumen";
   let m;try{m=VIEWS[TAB]()}catch(e){console.error(e);m='<div class="card">Hubo un error mostrando esta pantalla: '+esc(e.message)+'</div>'}
-  $("#app").innerHTML='<header><div class="brand"><b>AutoLuxuries</b><span>Números</span></div><a href="../">App de la compañía ↗</a></header><main>'+m+'</main><nav class="tabs">'+[["resumen","Resumen"],["trabajos","Trabajos"],["impuestos","Impuestos"],["ajustes","Ajustes"]].map(([k,l])=>'<button data-a="tab" data-v="'+k+'" class="'+(TAB===k?"on":"")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[k]+'</svg>'+l+'</button>').join("")+'</nav>'}
+  $("#app").innerHTML='<header><div class="brand"><b>AutoLuxuries</b><span>Números</span></div><a href="../">App de la compañía ↗</a></header><main>'+m+'</main><nav class="tabs">'+[["resumen","Resumen"],["trabajos","Trabajos"],["gastos","Gastos"],["impuestos","Impuestos"],["ajustes","Ajustes"]].map(([k,l])=>'<button data-a="tab" data-v="'+k+'" class="'+(TAB===k?"on":"")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[k]+'</svg>'+l+'</button>').join("")+'</nav>'}
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
   if(a==="tab"){TAB=v;location.hash=v;window.scrollTo(0,0);render()}
   else if(a==="per"){PER=v;OFF=0;render()}
   else if(a==="prev"){OFF--;render()}
   else if(a==="next"){if(OFF<0){OFF++;render()}}
+  else if(a==="close")closeSheet();
+  else if(a==="newGasto")formGasto();
+  else if(a==="editGasto")formGasto(v);
+  else if(a==="delGasto")borrarGasto(v);
+  else if(a==="delRecibo"){if(confirm("¿Quitar el recibo?")){await deleteDoc(doc(fs,"fotos",v));const g=S.gastos.find(x=>x.id===$('[name="id"]').value);if(g)await guardar("gastos",Object.assign({},g,{recibo:false,id:undefined}),g.id);toast("Recibo quitado")}}
+  else if(a==="newFijo")formFijo();
+  else if(a==="editFijo")formFijo(v);
+  else if(a==="delFijo"){if(confirm("¿Borrar este gasto fijo? Los gastos que ya se registraron se quedan.")){await deleteDoc(doc(fs,"gastosFijos",v));closeSheet();toast("Borrado")}}
   else if(a==="pagarQ"){const m=prompt("¿Cuánto pagaste al IRS para "+v+"?");if(m&&num(m)>0){const id=uid();await setDoc(doc(fs,"impuestos",id),{trimestre:v,monto:num(m),fecha:today(),creado:Date.now()});toast("Pago registrado")}}
   else if(a==="delImp"){if(confirm("¿Borrar este pago?")){await deleteDoc(doc(fs,"impuestos",v));toast("Borrado")}}
 });
-document.addEventListener("submit",async e=>{const f=e.target;if(f.dataset.f!=="cfg")return;e.preventDefault();
+document.addEventListener("change",e=>{if(e.target.id==="g_file")subirReciboInput(e.target)});
+document.addEventListener("submit",async e=>{const f=e.target;if(f.dataset.f==="gasto"){e.preventDefault();return submitGasto(f)}if(f.dataset.f==="fijo"){e.preventDefault();return submitFijo(f)}if(f.dataset.f!=="cfg")return;e.preventDefault();
   const costos={};f.querySelectorAll("input[data-n]").forEach(inp=>{const h=f.querySelector('[name="h_'+inp.name.slice(2)+'"]');if(inp.value!==""||h.value!=="")costos[inp.dataset.n]={costo:num(inp.value),horas:num(h.value)}});
-  const o={pctRenta:num(f.pctRenta.value),seguroSocial:f.seguroSocial.checked,boCiudad:f.boCiudad.checked,boCiudadPct:num(f.boCiudadPct.value),boEstado:f.boEstado.checked,boEstadoPct:num(f.boEstadoPct.value),salesIncluido:f.salesIncluido.checked,salesPct:num(f.salesPct.value),metodoAuto:f.metodoAuto.value,costoMilla:num(f.costoMilla.value),costos,actualizado:Date.now()};
+  const o={metaMes:num(f.metaMes.value)||"",pctRenta:num(f.pctRenta.value),seguroSocial:f.seguroSocial.checked,boCiudad:f.boCiudad.checked,boCiudadPct:num(f.boCiudadPct.value),boEstado:f.boEstado.checked,boEstadoPct:num(f.boEstadoPct.value),salesIncluido:f.salesIncluido.checked,salesPct:num(f.salesPct.value),metodoAuto:f.metodoAuto.value,costoMilla:num(f.costoMilla.value),costos,actualizado:Date.now()};
   try{await setDoc(doc(fs,"ajustes","numeros"),o);toast("Guardado")}catch(err){toast("No se pudo guardar")}});
 window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(VIEWS[h]&&h!==TAB){TAB=h;render()}});
 
 // ---------- datos ----------
-let renderT=null;const later=()=>{clearTimeout(renderT);renderT=setTimeout(render,60)};
-function start(){const cols=["citas","pagos","gastos","millas","servicios","impuestos"];let pend=cols.length+1;const done=()=>{if(--pend<=0&&!S.ok){S.ok=true;render()}};
-  cols.forEach(c=>{let first=true;onSnapshot(collection(fs,c),snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(first){first=false;done()}else later()},err=>{console.error(err);if(first){first=false;done()}})});
+let renderT=null;const later=()=>{clearTimeout(renderT);renderT=setTimeout(()=>{if($("#ov")){later();return}render()},60)};
+function start(){const cols=["citas","pagos","gastos","millas","servicios","impuestos","gastosFijos"];let pend=cols.length+1;const done=()=>{if(--pend<=0&&!S.ok){S.ok=true;render();setTimeout(aplicarFijos,500)}};
+  cols.forEach(c=>{let first=true;onSnapshot(collection(fs,c),snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(first){first=false;done()}else{later();if(c==="gastosFijos"&&S.ok)setTimeout(aplicarFijos,300)}},err=>{console.error(err);if(first){first=false;done()}})});
   let f1=true;onSnapshot(doc(fs,"ajustes","numeros"),d=>{S.cfg=d.exists()?d.data():{};if(f1){f1=false;done()}else later()},()=>{if(f1){f1=false;done()}});
   setTimeout(()=>{if(!S.ok){S.ok=true;render()}},4000)}
 function login(err){$("#app").innerHTML='<div class="login"><form id="lg"><div class="logo">AutoLuxuries<br><span style="font-size:15px;opacity:.7;letter-spacing:.15em">NÚMEROS</span></div><p style="opacity:.75;margin:0 0 6px">Entra con el mismo correo y contraseña de tu app de la compañía.</p><input id="lg_e" type="email" autocomplete="username" placeholder="Correo" required><input id="lg_p" type="password" autocomplete="current-password" placeholder="Contraseña" required>'+(err?'<p style="color:#f08080;margin:0">'+esc(err)+'</p>':"")+'<button id="lg_btn" type="submit">Entrar</button></form></div>';

@@ -669,7 +669,7 @@ let finMes=null;
 function formGasto(id){const g=id?byId("gastos",id):{fecha:today(),categoria:"Químicos y productos"};
   openSheet(id?"Editar gasto":"Nuevo gasto",'<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="g2"><div class="f"><label for="g_m">Monto</label><input id="g_m" name="monto" inputmode="decimal" value="'+esc(g.monto!=null?g.monto:"")+'" placeholder="0.00"></div><div class="f"><label for="g_f">Fecha</label><input id="g_f" name="fecha" type="date" value="'+esc(g.fecha)+'"></div></div><div class="f"><label for="g_c">Categoría</label><select id="g_c" name="categoria">'+opt(CAT_GASTO,g.categoria)+'</select></div><div class="f"><label for="g_d">Descripción</label><input id="g_d" name="desc" value="'+esc(g.desc||"")+'" placeholder="Ej: shampoo y cera en Chemical Guys"></div>',
   (id?'<button type="button" class="btn danger" data-act="delGasto" data-id="'+id+'">Borrar</button>':'<button type="button" class="btn" data-act="close">Cancelar</button>')+'<button type="submit" class="btn pri">Guardar gasto</button>',"gasto")}
-async function submitGasto(f){const o=fd(f);if(!num(o.monto))return toast("Escribe el monto.");try{await save("gastos",{id:o.id||undefined,monto:num(o.monto),fecha:o.fecha||today(),categoria:o.categoria,desc:o.desc||""});closeSheet();toast("Gasto guardado")}catch(e){}}
+async function submitGasto(f){const o=fd(f);if(!num(o.monto))return toast("Escribe el monto.");try{const prevG=o.id?byId("gastos",o.id)||{}:{};await save("gastos",Object.assign({},prevG,{id:o.id||undefined,monto:num(o.monto),fecha:o.fecha||today(),categoria:o.categoria,desc:o.desc||""}));closeSheet();toast("Gasto guardado")}catch(e){}}
 function citaOptsMillas(sel){const t=today();const cs=S.citas.filter(c=>c.estado!=="cancelada"&&c.fecha>=addDays(t,-60)&&c.fecha<=addDays(t,14)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));return '<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+cliNombre(c.clienteId)]),sel)}
 function mapsDist(citaId){const c=byId("citas",citaId),base=S.ajustes&&S.ajustes.baseDir;if(!c||!c.direccion||!base)return "";return '<a class="btn sm" href="https://maps.apple.com/?saddr='+encodeURIComponent(base)+'&daddr='+encodeURIComponent(c.direccion)+'" target="_blank" rel="noopener">Ver distancia en Mapas ↗</a>'}
 function formMillas(id,pre){const m=id?byId("millas",id):Object.assign({fecha:today(),idaVuelta:true},pre||{});
@@ -1124,7 +1124,7 @@ const ACT={
   firmaBorrar:()=>initFirma(),
   revCompartir:id=>compartirRevision(id),
   newGasto:()=>formGasto(),editGasto:id=>formGasto(id),
-  delGasto:async id=>{if(await askConfirm("¿Borrar este gasto?")){removeDoc("gastos",id);closeSheet();toast("Gasto borrado")}},
+  delGasto:async id=>{const gx=byId("gastos",id);if(gx&&gx.fijoId){toast("Es un gasto fijo: bórralo o páusalo en AL Números");return}if(await askConfirm("¿Borrar este gasto?")){removeDoc("gastos",id);closeSheet();toast("Gasto borrado")}},
   newMillas:()=>formMillas(),editMillas:id=>formMillas(id),
   millasCita:id=>{const c=byId("citas",id);formMillas(null,{citaId:id,fecha:c?c.fecha:today()})},
   delMillas:async id=>{if(await askConfirm("¿Borrar estas millas?")){removeDoc("millas",id);closeSheet();toast("Millas borradas")}},
