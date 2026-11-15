@@ -158,7 +158,7 @@ function costoCita(c){const cfg=C();const prod=itemsOf(c).reduce((a,x)=>a+cfgSer
   return {prod,mi,millasCosto:mi*cfg.costoMilla,horas}}
 function calcular(r){const cfg=C();
   const pagos=S.pagos.filter(p=>enR(r,p.fecha)),gastos=S.gastos.filter(g=>enR(r,g.fecha)),millas=S.millas.filter(m=>enR(r,m.fecha));
-  const cobrado=pagos.reduce((a,p)=>a+num(p.monto),0);
+  const cobrado=pagos.reduce((a,p)=>a+num(p.monto)+num(p.propina),0),propinas=pagos.reduce((a,p)=>a+num(p.propina),0);
   const sales=cfg.salesIncluido?cobrado*(cfg.salesPct/100)/(1+cfg.salesPct/100):0;
   const ingreso=cobrado-sales;
   const gastoTot=gastos.reduce((a,g)=>a+num(g.monto),0);
@@ -173,7 +173,7 @@ function calcular(r){const cfg=C();
   const boC=cfg.boCiudad?ingreso*cfg.boCiudadPct/100:0;
   const impuestos=se+renta+boE+boC;
   const libre=ingreso-gastoTot-impuestos;
-  return {pagos,gastos,millas,cobrado,sales,ingreso,gastoTot,gastoDeducible,mi,dedMillas,ganancia,gravable,se,renta,boE,boC,impuestos,libre}}
+  return {pagos,gastos,millas,propinas,cobrado,sales,ingreso,gastoTot,gastoDeducible,mi,dedMillas,ganancia,gravable,se,renta,boE,boC,impuestos,libre}}
 function porServicio(r){const out={};
   S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)&&!c.usaMembresia).forEach(c=>{const it=itemsOf(c),base=it.reduce((a,x)=>a+num(x.precio),0)||1,k=num(c.precio)/base,cc=costoCita(c),n=it.length;
     it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+cc.millasCosto/n;o.horas+=cs.horas||3/n})});
@@ -190,6 +190,7 @@ function consejos(){const cfg=C(),out=[];const r=rango(PER,OFF),k=calcular(r),pr
   const actual=OFF===0;
   if(k.cobrado>0){out.push(["good","💵",(actual?"":r.lab+": ")+"Cobraste "+money0(k.cobrado)+(actual?" "+nom:"")+". Después de "+money0(k.gastoTot)+" de gastos y apartar "+money0(k.impuestos)+" para impuestos, te quedan <b>"+money0(k.libre)+" libres</b>."])}
   else out.push(["info","📭",actual?"Todavía no hay cobros registrados "+nom+". Recuerda registrar cada pago en la app de la compañía.":"No hubo cobros en este periodo."]);
+  if(k.propinas>0){const sv=k.cobrado-k.propinas;out.push(["good","🙌","Recibiste "+money0(k.propinas)+" en propinas"+(actual?" "+nom:"")+(sv>0?", un "+Math.round(k.propinas/sv*100)+"% extra sobre tus servicios":"")+". Las propinas también cuentan como ingreso para impuestos."])}
   if(prev.cobrado>0&&k.cobrado>0){const d=(k.ganancia-prev.ganancia)/Math.abs(prev.ganancia||1)*100;if(Math.abs(d)>=10)out.push([d>0?"good":"warn",d>0?"📈":"📉","Tu ganancia "+(d>0?"subió ":"bajó ")+Math.round(Math.abs(d))+"% comparado con "+nomPrev+" ("+money0(prev.ganancia)+" → "+money0(k.ganancia)+")."])}
   if(k.cobrado>0){const m=k.ganancia/k.ingreso*100;if(m<40&&k.gastoTot>0)out.push(["warn","⚠️","Tus gastos se llevaron el "+Math.round(100-m)+"% de lo que cobraste. Revisa en qué se fue el dinero."])}
   // gasto que se disparó (mes actual vs promedio 3 meses)
@@ -291,7 +292,7 @@ function vResumen(){const r=rango(PER,OFF),k=calcular(r),cfg=C();
   h+='<div class="hero"><div class="k">Te quedó libre</div><div class="v">'+money(k.libre)+'</div><div class="s">Después de gastos y de apartar '+money(k.impuestos)+' para impuestos</div></div>';
   h+=bloqueMeta();
   h+='<div class="tips">'+(PER==="ano"&&OFF===0?proyeccionAno():"")+consejos().map(([c,i,t])=>'<div class="tip '+c+'"><span class="ic">'+i+'</span><div>'+t+'</div></div>').join("")+'</div>';
-  h+='<div class="card"><h2>Cómo se calcula</h2><div class="kv"><div><span>Cobrado</span><span>'+money(k.cobrado)+'</span></div>'+
+  h+='<div class="card"><h2>Cómo se calcula</h2><div class="kv"><div><span>Cobrado</span><span>'+money(k.cobrado)+'</span></div>'+(k.propinas?'<div class="sub"><span>De eso, propinas</span><span>'+money(k.propinas)+'</span></div>':"")+
     (cfg.salesIncluido?'<div class="sub"><span>− Sales tax incluido ('+cfg.salesPct+'%), es del estado</span><span>'+money(k.sales)+'</span></div>':"")+
     '<div><span>− Gastos</span><span class="neg">'+money(k.gastoTot)+'</span></div><div class="tot"><span>Ganancia antes de impuestos</span><span>'+money(k.ganancia)+'</span></div>'+
     '<div><span>− Apartar para impuestos</span><span class="neg">'+money(k.impuestos)+'</span></div>'+
