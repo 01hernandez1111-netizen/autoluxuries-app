@@ -154,7 +154,7 @@ function itemsOf(c){if(c.items&&c.items.length)return c.items;return [{servicio:
 function cfgServ(nombre){const c=C().costos[nombre]||{};return {costo:num(c.costo),horas:num(c.horas)||0}}
 function costoCita(c){const cfg=C();const prod=itemsOf(c).reduce((a,x)=>a+cfgServ(x.servicio).costo,0);
   const mi=S.millas.filter(m=>m.citaId===c.id).reduce((a,m)=>a+num(m.millas),0);
-  const horas=itemsOf(c).reduce((a,x)=>a+(cfgServ(x.servicio).horas||0),0)||3;
+  const horas=num(c.horasReales)||itemsOf(c).reduce((a,x)=>a+(cfgServ(x.servicio).horas||0),0)||3;
   return {prod,mi,millasCosto:mi*cfg.costoMilla,horas}}
 function calcular(r){const cfg=C();
   const pagos=S.pagos.filter(p=>enR(r,p.fecha)),gastos=S.gastos.filter(g=>enR(r,g.fecha)),millas=S.millas.filter(m=>enR(r,m.fecha));
@@ -176,7 +176,7 @@ function calcular(r){const cfg=C();
   return {pagos,gastos,millas,propinas,cobrado,sales,ingreso,gastoTot,gastoDeducible,mi,dedMillas,ganancia,gravable,se,renta,boE,boC,impuestos,libre}}
 function porServicio(r){const out={};
   S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)&&!c.usaMembresia).forEach(c=>{const it=itemsOf(c),base=it.reduce((a,x)=>a+num(x.precio),0)||1,k=num(c.precio)/base,cc=costoCita(c),n=it.length;
-    it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+cc.millasCosto/n;o.horas+=cs.horas||3/n})});
+    it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+cc.millasCosto/n;o.horas+=num(c.horasReales)?num(c.horasReales)/n:(cs.horas||3/n)})});
   return Object.entries(out).map(([k,v])=>Object.assign({nombre:k,gan:v.cobrado-v.costo,porHora:(v.cobrado-v.costo)/(v.horas||1)},v)).sort((a,b)=>b.gan-a.gan)}
 function saldoCita(c){if(c.usaMembresia)return 0;return num(c.precio)-S.pagos.filter(p=>p.citaId===c.id).reduce((a,p)=>a+num(p.monto),0)}
 // trimestres del IRS para pagos estimados
@@ -310,7 +310,7 @@ function vTrabajos(){const r=rango(PER,OFF),cfg=C();let h=selPer();
   const ps=porServicio(r);
   h+='<div class="card"><h2>Lo que más te dejó</h2>'+(ps.length?'<div class="list">'+ps.map(x=>'<div class="row"><div><div class="t">'+esc(x.nombre)+'</div><div class="s">'+x.n+' trabajo'+(x.n>1?"s":"")+' · cobrado '+money0(x.cobrado)+' · costo '+money0(x.costo)+'</div></div><div class="r"><b>'+money0(x.gan)+'</b><div class="s">'+money0(x.porHora)+'/hora</div></div></div>').join("")+'</div>':'<div class="empty">No hay trabajos completados en este periodo.</div>')+'</div>';
   h+='<div class="card"><h2>Cada trabajo</h2>'+(cs.length?'<div class="list">'+cs.map(c=>{const cc=costoCita(c),cob=c.usaMembresia?0:num(c.precio),g=cob-cc.prod-cc.millasCosto;
-    return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div></div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
+    return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+(num(c.horasReales)?" · ⏱ "+(Math.round(num(c.horasReales)*10)/10)+" h":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div></div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
     '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. Los costos por servicio se cambian en Ajustes.</p></div>';
   return h}
 function vGastos(){const r=rango(PER,OFF);let h=selPer();

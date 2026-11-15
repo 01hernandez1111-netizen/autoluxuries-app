@@ -140,6 +140,13 @@ nav.tabs button.on{color:var(--gold-ink)}
 .guia summary small{color:var(--muted)}
 .guia h4{margin:14px 0 6px;font-size:14px}
 .guia ul{margin:0;padding-left:20px;line-height:1.6}
+.timer{display:flex;align-items:baseline;gap:12px;padding:6px 0}
+.tclock{font-family:var(--display,inherit);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.timer .s{color:var(--muted);font-size:13px}
+.timer.on .tclock{color:var(--ok)}
+.tbanner{display:flex;justify-content:space-between;align-items:center;width:100%;background:#0a0a0a;color:#fff;border:0;border-radius:14px;padding:12px 14px;margin:0 0 10px;font:inherit;cursor:pointer;text-align:left}
+.tbanner small{display:block;opacity:.7;font-size:12px}
+.tbanner b{font-variant-numeric:tabular-nums;font-size:20px;color:#7ee2a8}
 .vchips{display:flex;flex-wrap:wrap;gap:6px}
 .del{background:none;border:0;color:var(--bad);font-size:20px;cursor:pointer;line-height:1}
 .kv{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px}
@@ -425,7 +432,7 @@ function vInicio(){
   const porCobrar=S.citas.reduce((a,c)=>a+saldoCita(c),0);
   const renov=S.membresias.filter(m=>m.estado==="activa"&&m.proxCobro&&m.proxCobro<=addDays(t,7)).sort((a,b)=>a.proxCobro.localeCompare(b.proxCobro));
   const estAb=S.estimaciones.filter(e=>e.estado==="enviada"||e.estado==="borrador").length;
-  let h='<div class="section"><h1>'+esc(fDate(t,{weekday:"long",day:"numeric",month:"long"}).replace(/^./,m=>m.toUpperCase()))+'</h1></div>';
+  let h=bannerTimer()+'<div class="section"><h1>'+esc(fDate(t,{weekday:"long",day:"numeric",month:"long"}).replace(/^./,m=>m.toUpperCase()))+'</h1></div>';
   const nuevas=S.solicitudes.filter(x=>x.estado==="nueva").sort((a,b)=>(b.creado||0)-(a.creado||0));
   const vNuevas=S.verificaciones.filter(x=>x.estado==="nueva"), vVence=S.verificaciones.filter(x=>x.estado==="verificado"&&x.reverificarEl&&x.reverificarEl<=addDays(t,14));
   if(vNuevas.length||vVence.length)h+='<div class="section"><h2>Planes de trabajo <button type="button" class="lnk" data-act="go" data-id="verificaciones">Ver</button></h2><div class="list">'+vNuevas.map(verRow).join("")+vVence.map(verRow).join("")+'</div></div>';
@@ -539,6 +546,24 @@ function openSheet(title,body,foot,formName){
   $("#modal").innerHTML='<div class="ov" data-act="ovclose">'+(formName?'<form class="sheet" data-form="'+formName+'" novalidate>'+inner+'</form>':'<div class="sheet">'+inner+'</div>')+'</div>';
 }
 function closeSheet(){$("#modal").innerHTML=""}
+// --- cronómetro por cita ---
+function tTotal(c){const t=c.timer||{};return num(t.acum)+(t.inicio?Date.now()-num(t.inicio):0)}
+function hms(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")}
+function hTxt(ms){const m=Math.round(ms/60000);const h=Math.floor(m/60);return (h?h+" h ":"")+(m%60)+" min"}
+function corriendo(){return S.citas.filter(c=>c.timer&&c.timer.inicio)}
+function seccionTimer(c){const t=c.timer||{},on=!!t.inicio,tot=tTotal(c);if(c.estado==="cancelada"&&!tot)return "";
+  let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
+  if(on)h+='<button type="button" class="btn" data-act="tPausa" data-id="'+c.id+'">⏸ Pausar</button><button type="button" class="btn dark" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>';
+  else if(c.estado==="programada")h+='<button type="button" class="btn dark" data-act="tIni" data-id="'+c.id+'">▶ '+(tot?"Seguir":"Empezar")+'</button>'+(tot?'<button type="button" class="btn" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>':"");
+  h+=(tot&&!on?'<button type="button" class="btn sm" data-act="tEditar" data-id="'+c.id+'">Corregir tiempo</button>':"")+'</div>';
+  if(c.horasReales)h+='<p class="note" style="margin:0">Tiempo total: <b>'+hTxt(c.horasReales*3600000)+'</b>'+(num(c.precio)?' · '+money(num(c.precio)/c.horasReales)+' por hora':"")+'</p>';
+  return h+'</div>'}
+async function timerSet(id,fn){const c=byId("citas",id);if(!c)return;const t=Object.assign({acum:0,inicio:null,sesiones:[]},c.timer||{});fn(t,c);
+  const n=Object.assign({},c,{timer:t});const tot=num(t.acum);if(tot>0)n.horasReales=Math.round(tot/36000)/100;else delete n.horasReales;await save("citas",n);return n}
+let tickT=null;
+function tick(){clearInterval(tickT);tickT=setInterval(()=>{const els=document.querySelectorAll("[data-timer]");if(!els.length)return;els.forEach(e=>{const c=byId("citas",e.dataset.timer);if(c)e.textContent=hms(tTotal(c))})},1000)}
+tick();
+function bannerTimer(){const cs=corriendo();if(!cs.length)return "";return cs.map(c=>'<button type="button" class="tbanner" data-act="verCita" data-id="'+c.id+'"><span>⏱ Trabajando · '+esc(cliNombre(c.clienteId))+'<small>'+esc(c.servicio||"")+'</small></span><b data-timer="'+c.id+'">'+hms(tTotal(c))+'</b></button>').join("")}
 // --- cancelaciones ---
 const MOTIVOS=["El cliente canceló","El cliente no se presentó","Lo cancelé yo (clima, agenda, etc.)","Va a reprogramar","El precio no le funcionó","Otro"];
 function formCancelar(id){const c=byId("citas",id);if(!c)return;
@@ -872,6 +897,7 @@ function verCita(id){
   if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
   b+=itemsOf(c).map(x=>servInfo(x.servicio)).join("");
   if(itemsOf(c).some(x=>guiaDe(x.servicio)))b+='<div class="btns" style="margin-top:6px"><button type="button" class="btn sm" data-act="verGuia" data-id="'+id+'">Qué incluye y cargos extra</button></div>';
+  b+=seccionTimer(c);
   b+=seccionRevision(c);
   b+=seccionFotos(id);
   const mc=S.millas.filter(m=>m.citaId===id);
@@ -1111,6 +1137,14 @@ const ACT={
   newMem:()=>formMem(), editMem:id=>formMem(id), verMem, memRenovar:id=>formRenovar(id),
   exportar, salir:async()=>{if(await askConfirm("¿Cerrar sesión en este aparato?","Sí, cerrar")){signOut(auth)}},
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
+  tIni:async id=>{const otro=corriendo().find(c=>c.id!==id);if(otro&&!(await askConfirm("Ya tienes corriendo el tiempo de "+cliNombre(otro.clienteId)+". ¿Lo pausamos y empezamos este?","Sí, cambiar")))return;
+    if(otro)await timerSet(otro.id,t=>{t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});
+    await timerSet(id,t=>{t.inicio=Date.now()});toast("Tiempo corriendo");verCita(id)},
+  tPausa:async id=>{await timerSet(id,t=>{if(!t.inicio)return;t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});toast("En pausa");verCita(id)},
+  tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});
+    const tot=tTotal(n);if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+". ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
+  tEditar:async id=>{const c=byId("citas",id);const v=prompt("¿Cuántas horas trabajaste en total? (ej. 2.5)",c.horasReales||Math.round(tTotal(c)/36000)/100);if(v==null)return;const h=num(v);if(!(h>=0))return;
+    await timerSet(id,t=>{t.acum=Math.round(h*3600000);t.inicio=null});toast("Tiempo corregido");verCita(id)},
   cancelarCita:id=>formCancelar(id),
   cancelMsgEn:id=>copyText(msgCancel(byId("citas",id),"en")),cancelMsgEs:id=>copyText(msgCancel(byId("citas",id),"es")),
   reactivar:async id=>{const c=byId("citas",id);if(await askConfirm("¿Volver a poner esta cita como programada?","Sí, reactivar")){const n=Object.assign({},c,{estado:"programada"});delete n.motivoCancel;delete n.notaCancel;delete n.canceladaEn;await save("citas",n);toast("Cita reactivada");verCita(id)}},
