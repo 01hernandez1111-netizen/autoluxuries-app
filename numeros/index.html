@@ -118,7 +118,7 @@ const auth = getAuth(fbApp);
 let fs; try{fs=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){fs=initializeFirestore(fbApp,{})}
 
 // ---------- estado ----------
-const S={citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],gastosFijos:[],cfg:{},ok:false};
+const S={negocio:{},citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],gastosFijos:[],cfg:{},ok:false};
 let TAB=(location.hash||"#resumen").slice(1), PER="semana", OFF=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -151,6 +151,7 @@ const enR=(r,f)=>f&&f>=r.a&&f<=r.b;
 
 // ---------- cálculos ----------
 function itemsOf(c){if(c.items&&c.items.length)return c.items;return [{servicio:c.servicio,precio:c.precioBase!=null?c.precioBase:c.precio}]}
+function pagoHora(){return num(S.negocio&&S.negocio.pagoHora)||25}
 function cfgServ(nombre){const c=C().costos[nombre]||{};return {costo:num(c.costo),horas:num(c.horas)||0}}
 function costoCita(c){const cfg=C();const prod=itemsOf(c).reduce((a,x)=>a+cfgServ(x.servicio).costo,0);
   const mi=S.millas.filter(m=>m.citaId===c.id).reduce((a,m)=>a+num(m.millas),0);
@@ -190,6 +191,7 @@ function consejos(){const cfg=C(),out=[];const r=rango(PER,OFF),k=calcular(r),pr
   const actual=OFF===0;
   if(k.cobrado>0){out.push(["good","💵",(actual?"":r.lab+": ")+"Cobraste "+money0(k.cobrado)+(actual?" "+nom:"")+". Después de "+money0(k.gastoTot)+" de gastos y apartar "+money0(k.impuestos)+" para impuestos, te quedan <b>"+money0(k.libre)+" libres</b>."])}
   else out.push(["info","📭",actual?"Todavía no hay cobros registrados "+nom+". Recuerda registrar cada pago en la app de la compañía.":"No hubo cobros en este periodo."]);
+  {const cw=S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)&&num(c.horasReales)>0),hh=cw.reduce((a,c)=>a+num(c.horasReales),0);if(hh>0)out.push(["info","⏱","Trabajaste "+(Math.round(hh*10)/10)+" horas en "+cw.length+" cita"+(cw.length>1?"s":"")+(actual?" "+nom:"")+": te corresponden <b>"+money0(hh*pagoHora())+"</b> a "+money0(pagoHora())+" la hora."])}
   if(k.propinas>0){const sv=k.cobrado-k.propinas;out.push(["good","🙌","Recibiste "+money0(k.propinas)+" en propinas"+(actual?" "+nom:"")+(sv>0?", un "+Math.round(k.propinas/sv*100)+"% extra sobre tus servicios":"")+". Las propinas también cuentan como ingreso para impuestos."])}
   if(prev.cobrado>0&&k.cobrado>0){const d=(k.ganancia-prev.ganancia)/Math.abs(prev.ganancia||1)*100;if(Math.abs(d)>=10)out.push([d>0?"good":"warn",d>0?"📈":"📉","Tu ganancia "+(d>0?"subió ":"bajó ")+Math.round(Math.abs(d))+"% comparado con "+nomPrev+" ("+money0(prev.ganancia)+" → "+money0(k.ganancia)+")."])}
   if(k.cobrado>0){const m=k.ganancia/k.ingreso*100;if(m<40&&k.gastoTot>0)out.push(["warn","⚠️","Tus gastos se llevaron el "+Math.round(100-m)+"% de lo que cobraste. Revisa en qué se fue el dinero."])}
@@ -308,10 +310,12 @@ function vResumen(){const r=rango(PER,OFF),k=calcular(r),cfg=C();
 function vTrabajos(){const r=rango(PER,OFF),cfg=C();let h=selPer();
   const cs=S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const ps=porServicio(r);
+  const conT=cs.filter(c=>num(c.horasReales)>0),hrs=conT.reduce((a,c)=>a+num(c.horasReales),0),ph=pagoHora();
+  h+='<div class="hero"><div class="k">Tu pago por tus horas</div><div class="v">'+money(hrs*ph)+'</div><div class="s">'+(Math.round(hrs*10)/10)+' horas trabajadas × '+money(ph)+' por hora'+(cs.length>conT.length?' · '+(cs.length-conT.length)+' cita'+(cs.length-conT.length>1?"s":"")+' sin tiempo registrado':"")+'</div></div>';
   h+='<div class="card"><h2>Lo que más te dejó</h2>'+(ps.length?'<div class="list">'+ps.map(x=>'<div class="row"><div><div class="t">'+esc(x.nombre)+'</div><div class="s">'+x.n+' trabajo'+(x.n>1?"s":"")+' · cobrado '+money0(x.cobrado)+' · costo '+money0(x.costo)+'</div></div><div class="r"><b>'+money0(x.gan)+'</b><div class="s">'+money0(x.porHora)+'/hora</div></div></div>').join("")+'</div>':'<div class="empty">No hay trabajos completados en este periodo.</div>')+'</div>';
   h+='<div class="card"><h2>Cada trabajo</h2>'+(cs.length?'<div class="list">'+cs.map(c=>{const cc=costoCita(c),cob=c.usaMembresia?0:num(c.precio),g=cob-cc.prod-cc.millasCosto;
-    return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+(num(c.horasReales)?" · ⏱ "+(Math.round(num(c.horasReales)*10)/10)+" h":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div></div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
-    '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. Los costos por servicio se cambian en Ajustes.</p></div>';
+    const hr=num(c.horasReales),tp=hr*pagoHora();return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+(num(c.horasReales)?" · ⏱ "+(Math.round(num(c.horasReales)*10)/10)+" h":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div>'+(hr?'<div class="s" style="color:var(--ok);font-weight:600">tu pago '+money(tp)+'</div><div class="s">negocio '+money0(g-tp)+'</div>':'<div class="s">sin tiempo</div>')+'</div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
+    '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. "Tu pago" = horas del cronómetro × '+money(pagoHora())+' por hora, y "negocio" es lo que queda después de pagarte. Los costos por servicio se cambian en Ajustes.</p></div>';
   return h}
 function vGastos(){const r=rango(PER,OFF);let h=selPer();
   const gl=S.gastos.filter(g=>enR(r,g.fecha)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const tot=gl.reduce((a,g)=>a+num(g.monto),0);
@@ -336,7 +340,7 @@ function vImpuestos(){const t=today(),y=toD(t).getFullYear(),cfg=C();const k=cal
   h+='<p class="note">Todo esto es un estimado para que sepas cuánto apartar. Confirma las cantidades exactas con tu contador.</p>';
   return h}
 function vAjustes(){const cfg=C();const servs=[...new Set(S.servicios.map(s=>s.nombre).filter(Boolean).concat(S.citas.flatMap(c=>itemsOf(c).map(x=>x.servicio)).filter(Boolean)))].sort();
-  let h='<h1>Ajustes</h1><form class="card" data-f="cfg"><h2>Tu meta</h2><div class="f"><label for="a_meta">Meta de ganancia al mes (antes de impuestos)</label><input id="a_meta" name="metaMes" inputmode="decimal" value="'+esc(cfg.metaMes||"")+'" placeholder="Ej: 4000"></div><p class="note">La meta de la semana se calcula sola a partir de esta.</p><h2 style="margin-top:18px">Impuestos</h2>'+
+  let h='<h1>Ajustes</h1><form class="card" data-f="cfg"><h2>Tu meta</h2><div class="f"><label for="a_meta">Meta de ganancia al mes (antes de impuestos)</label><input id="a_meta" name="metaMes" inputmode="decimal" value="'+esc(cfg.metaMes||"")+'" placeholder="Ej: 4000"></div><p class="note">La meta de la semana se calcula sola a partir de esta.</p><div class="f"><label for="a_ph">Tu pago por hora de trabajo</label><input id="a_ph" name="pagoHora" inputmode="decimal" value="'+pagoHora()+'"></div><p class="note">Se usa con las horas del cronómetro de cada cita. También se cambia en la app de citas.</p><h2 style="margin-top:18px">Impuestos</h2>'+
   '<div class="f"><label for="a_r">Impuesto federal sobre la renta (%)</label><input id="a_r" name="pctRenta" inputmode="decimal" value="'+cfg.pctRenta+'"></div><p class="note">Para la mayoría de los negocios chicos es entre 10% y 12%. Pregúntale a tu contador cuál es el tuyo.</p>'+
   '<label class="chk"><input type="checkbox" name="seguroSocial" '+(cfg.seguroSocial?"checked":"")+'> Contar Seguro Social y Medicare (15.3%)</label>'+
   '<label class="chk"><input type="checkbox" name="boCiudad" '+(cfg.boCiudad?"checked":"")+'> Contar B&amp;O de la ciudad de Vancouver</label><div class="f"><label for="a_bc">B&amp;O de Vancouver (%)</label><input id="a_bc" name="boCiudadPct" inputmode="decimal" value="'+cfg.boCiudadPct+'"></div>'+
@@ -376,13 +380,14 @@ document.addEventListener("change",e=>{if(e.target.id==="g_file")subirReciboInpu
 document.addEventListener("submit",async e=>{const f=e.target;if(f.dataset.f==="gasto"){e.preventDefault();return submitGasto(f)}if(f.dataset.f==="fijo"){e.preventDefault();return submitFijo(f)}if(f.dataset.f!=="cfg")return;e.preventDefault();
   const costos={};f.querySelectorAll("input[data-n]").forEach(inp=>{const h=f.querySelector('[name="h_'+inp.name.slice(2)+'"]');if(inp.value!==""||h.value!=="")costos[inp.dataset.n]={costo:num(inp.value),horas:num(h.value)}});
   const o={metaMes:num(f.metaMes.value)||"",pctRenta:num(f.pctRenta.value),seguroSocial:f.seguroSocial.checked,boCiudad:f.boCiudad.checked,boCiudadPct:num(f.boCiudadPct.value),boEstado:f.boEstado.checked,boEstadoPct:num(f.boEstadoPct.value),salesIncluido:f.salesIncluido.checked,salesPct:num(f.salesPct.value),metodoAuto:f.metodoAuto.value,costoMilla:num(f.costoMilla.value),costos,actualizado:Date.now()};
-  try{await setDoc(doc(fs,"ajustes","numeros"),o);toast("Guardado")}catch(err){toast("No se pudo guardar")}});
+  try{await setDoc(doc(fs,"ajustes","numeros"),o);const ph=num(f.pagoHora.value);if(ph&&ph!==pagoHora())await setDoc(doc(fs,"ajustes","negocio"),Object.assign({},S.negocio,{pagoHora:ph}));toast("Guardado")}catch(err){toast("No se pudo guardar")}});
 window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(VIEWS[h]&&h!==TAB){TAB=h;render()}});
 
 // ---------- datos ----------
 let renderT=null;const later=()=>{clearTimeout(renderT);renderT=setTimeout(()=>{if($("#ov")){later();return}render()},60)};
 function start(){const cols=["citas","pagos","gastos","millas","servicios","impuestos","gastosFijos"];let pend=cols.length+1;const done=()=>{if(--pend<=0&&!S.ok){S.ok=true;render();setTimeout(aplicarFijos,500)}};
   cols.forEach(c=>{let first=true;onSnapshot(collection(fs,c),snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(first){first=false;done()}else{later();if(c==="gastosFijos"&&S.ok)setTimeout(aplicarFijos,300)}},err=>{console.error(err);if(first){first=false;done()}})});
+  onSnapshot(doc(fs,"ajustes","negocio"),d=>{S.negocio=d.exists()?d.data():{};if(S.ok)later()},()=>{});
   let f1=true;onSnapshot(doc(fs,"ajustes","numeros"),d=>{S.cfg=d.exists()?d.data():{};if(f1){f1=false;done()}else later()},()=>{if(f1){f1=false;done()}});
   setTimeout(()=>{if(!S.ok){S.ok=true;render()}},4000)}
 function login(err){$("#app").innerHTML='<div class="login"><form id="lg"><div class="logo">AutoLuxuries<br><span style="font-size:15px;opacity:.7;letter-spacing:.15em">NÚMEROS</span></div><p style="opacity:.75;margin:0 0 6px">Entra con el mismo correo y contraseña de tu app de la compañía.</p><input id="lg_e" type="email" autocomplete="username" placeholder="Correo" required><input id="lg_p" type="password" autocomplete="current-password" placeholder="Contraseña" required>'+(err?'<p style="color:#f08080;margin:0">'+esc(err)+'</p>':"")+'<button id="lg_btn" type="submit">Entrar</button></form></div>';
