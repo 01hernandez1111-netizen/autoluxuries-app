@@ -670,12 +670,21 @@ function horasTimer(c){const t=c.timer||{},ss=sesionesDe(c);if(!ss.length)return
     h+='<div><span>Tramos</span><span style="text-align:right">'+ss.map(x=>horaTxt(x.ini)+" – "+(x.fin?horaTxt(x.fin):"ahora")).join("<br>")+'</span></div>'+(pausas>60000?'<div><span>Pausas</span><span>'+hTxt(pausas)+'</span></div>':"")}
   return h+'</div>'}
 function corriendo(){return S.citas.filter(c=>c.timer&&c.timer.inicio)}
+function hhmm(ts){if(!ts)return "";const d=new Date(num(ts));return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function formTiempo(id){const c=byId("citas",id);if(!c)return;const t=c.timer||{},ss=sesionesDe(c);const ini=t.empezo||(ss[0]&&ss[0].ini),fin=t.terminado||(ss.length&&ss[ss.length-1].fin);
+  openSheet("Tiempo de trabajo",'<input type="hidden" name="id" value="'+id+'"><p class="note" style="margin:0">Pon la hora en que empezaste y en que terminaste. Si tomaste un descanso, ponlo en minutos.</p><div class="g2"><div class="f"><label for="tm_i">Empecé a las</label><input id="tm_i" name="ini" type="time" value="'+hhmm(ini)+'" data-inp="tmCalc"></div><div class="f"><label for="tm_f">Terminé a las</label><input id="tm_f" name="fin" type="time" value="'+hhmm(fin)+'" data-inp="tmCalc"></div></div><div class="f"><label for="tm_p">Descanso (minutos)</label><input id="tm_p" name="pausa" inputmode="numeric" value="0" data-inp="tmCalc"></div><div class="total"><span>Tiempo trabajado</span><span id="tm_tot">'+(c.horasReales?hTxt(c.horasReales*3600000):"—")+'</span></div><p class="note" style="margin:0">O escribe solo el total de horas:</p><div class="f"><label for="tm_h">Horas en total</label><input id="tm_h" name="horas" inputmode="decimal" placeholder="Ej. 2.5" value=""></div>',
+  '<button type="button" class="btn" data-act="verCita" data-id="'+id+'">Volver</button><button type="submit" class="btn pri">Guardar tiempo</button>',"tiempo")}
+function tmMs(f){const a=f.ini.value,b=f.fin.value;if(!a||!b)return null;const [ah,am]=a.split(":").map(Number),[bh,bm]=b.split(":").map(Number);let m=(bh*60+bm)-(ah*60+am);if(m<0)m+=1440;m-=num(f.pausa.value);return Math.max(0,m)*60000}
+async function submitTiempo(f){const id=f.id.value,c=byId("citas",id);if(!c)return;let ms=null,ini=null,fin=null;
+  if(num(f.horas.value)>0)ms=Math.round(num(f.horas.value)*3600000);
+  else{ms=tmMs(f);if(ms==null)return toast("Pon la hora de inicio y de fin, o el total de horas.");const d=c.fecha||today();ini=new Date(d+"T"+f.ini.value+":00").getTime();fin=new Date(d+"T"+f.fin.value+":00").getTime();if(fin<ini)fin+=864e5}
+  await timerSet(id,t=>{t.acum=ms;t.inicio=null;if(ini){t.empezo=ini;t.terminado=fin;t.sesiones=[{ini,fin}]}});toast("Tiempo guardado: "+hTxt(ms));verCita(id)}
 function pagoHora(){return num(S.ajustes&&S.ajustes.pagoHora)||25}
 function seccionTimer(c){const t=c.timer||{},on=!!t.inicio,tot=tTotal(c);if(c.estado==="cancelada"&&!tot)return "";
-  let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
+  let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot&&(t.terminado||c.estado==="completada")?"Terminado":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
   if(on)h+='<button type="button" class="btn" data-act="tPausa" data-id="'+c.id+'">⏸ Pausar</button><button type="button" class="btn dark" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>';
   else if(c.estado==="programada")h+='<button type="button" class="btn dark" data-act="tIni" data-id="'+c.id+'">▶ '+(tot?"Seguir":"Empezar")+'</button>'+(tot?'<button type="button" class="btn" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>':"");
-  h+=(tot&&!on?'<button type="button" class="btn sm" data-act="tEditar" data-id="'+c.id+'">Corregir tiempo</button>':"")+'</div>'+horasTimer(c);
+  h+=(!on&&(tot||c.estado==="completada")?'<button type="button" class="btn sm" data-act="tEditar" data-id="'+c.id+'">'+(tot?"Corregir tiempo":"Anotar tiempo")+'</button>':"")+'</div>'+horasTimer(c);
   if(c.horasReales){const ph=pagoHora(),tu=c.horasReales*ph;h+='<div class="kv" style="margin-top:6px"><div><span>Horas trabajadas</span><span>'+hTxt(c.horasReales*3600000)+' ('+(Math.round(c.horasReales*100)/100)+' h)</span></div><div><span>Tu pago por tu trabajo</span><span><b style="color:var(--ok)">'+money(tu)+'</b><br><small style="color:var(--muted)">'+(Math.round(c.horasReales*100)/100)+' h × '+money(ph)+'/hora</small></span></div>'+(num(c.precio)&&!c.usaMembresia?'<div><span>Le queda al negocio</span><span>'+money(num(c.precio)-tu)+'</span></div><div><span>El cliente pagó por hora</span><span>'+money(num(c.precio)/c.horasReales)+'</span></div>':"")+'</div>'}
   return h+'</div>'}
 async function timerSet(id,fn){const c=byId("citas",id);if(!c)return;const t=Object.assign({acum:0,inicio:null,sesiones:[]},c.timer||{});fn(t,c);
@@ -918,7 +927,7 @@ async function submitCliente(f){
   const vehiculos=descs.map((d,i)=>({tipo:tipos[i],desc:d})).filter(v=>v.desc);
   const prev=o.id?byId("clientes",o.id):{};
   const rec={id:o.id||undefined,nombre:o.nombre,telefono:o.telefono,email:o.email,direccion:o.direccion,notas:o.notas,vehiculos,creado:(prev&&prev.creado)||today()};
-  try{const nid=await save("clientes",rec);closeSheet();toast("Cliente guardado");verCliente(nid)}catch(e){}
+  try{const nid=await save("clientes",o.id&&prev?Object.assign({},prev,rec):rec);closeSheet();toast("Cliente guardado");verCliente(nid)}catch(e){}
 }
 function verCliente(id){
   const c=byId("clientes",id); if(!c)return closeSheet();
@@ -977,8 +986,9 @@ async function submitCita(f){
   const cli=byId("clientes",clienteId);
   try{
     if(cli){const ya=(cli.vehiculos||[]).map(v=>(v.desc||"").toLowerCase());const add=nuevosV.filter(v=>!ya.includes(v.desc.toLowerCase()));if(add.length)await save("clientes",Object.assign({},cli,{vehiculos:(cli.vehiculos||[]).concat(add)}))}
-    const nid=await save("citas",rec);
-    await contarMembresia(nid,rec);
+    const recFull=prev?Object.assign({},prev,rec):rec;
+    const nid=await save("citas",recFull);
+    await contarMembresia(nid,recFull);
     if(o.estId){const e=byId("estimaciones",o.estId);if(e&&e.estado!=="aceptada")await save("estimaciones",Object.assign({},e,{estado:"aceptada"}))}
     if(o.solId){const sl=byId("solicitudes",o.solId);if(sl)await save("solicitudes",Object.assign({},sl,{estado:"aceptada",citaId:nid,clienteId}))}
     closeSheet();toast("Cita guardada");
@@ -1046,7 +1056,7 @@ function formPago(pre){
 }
 async function submitPago(f){
   const o=fd(f); if(!o.clienteId)return toast("Elige un cliente."); if(!num(o.monto)&&!num(o.propina))return toast("Escribe el monto.");
-  try{await save("pagos",{id:o.id||undefined,clienteId:o.clienteId,citaId:o.citaId,memId:o.memId,monto:num(o.monto),propina:num(o.propina),fecha:o.fecha||today(),metodo:o.metodo,concepto:o.concepto});closeSheet();toast(num(o.propina)?"Pago y propina registrados":"Pago registrado")}catch(e){}
+  try{const prevP=o.id?byId("pagos",o.id)||{}:{};await save("pagos",Object.assign({},prevP,{id:o.id||undefined,clienteId:o.clienteId,citaId:o.citaId,memId:o.memId,monto:num(o.monto),propina:num(o.propina),fecha:o.fecha||today(),metodo:o.metodo,concepto:o.concepto}));closeSheet();toast(num(o.propina)?"Pago y propina registrados":"Pago registrado")}catch(e){}
 }
 function verPago(id){
   const p=byId("pagos",id); if(!p)return;
@@ -1122,7 +1132,7 @@ async function submitMem(f){
   const o=fd(f); if(!o.clienteId)return toast("Elige un cliente."); const p=byId("planes",o.planId); if(!p)return toast("Elige un plan.");
   const prev=o.id?byId("membresias",o.id):null; const meses=(FREQ[p.frecuencia]||["",1])[1];
   const rec={id:o.id||undefined,clienteId:o.clienteId,planId:p.id,planNombre:p.nombre,precio:num(p.precio),frecuencia:p.frecuencia,incluidos:num(p.incluidos),usados:prev?num(o.usados):0,inicio:o.inicio||today(),proxCobro:prev?(o.proxCobro||prev.proxCobro):addMonths(o.inicio||today(),meses),estado:o.estado};
-  try{const nid=await save("membresias",rec);if(!prev&&o.cobrarYa)await save("pagos",{clienteId:o.clienteId,memId:nid,monto:num(p.precio),fecha:o.inicio||today(),metodo:o.metodo,concepto:"Membresía "+p.nombre});closeSheet();toast("Membresía guardada")}catch(e){}
+  try{const nid=await save("membresias",prev?Object.assign({},prev,rec):rec);if(!prev&&o.cobrarYa)await save("pagos",{clienteId:o.clienteId,memId:nid,monto:num(p.precio),fecha:o.inicio||today(),metodo:o.metodo,concepto:"Membresía "+p.nombre});closeSheet();toast("Membresía guardada")}catch(e){}
 }
 function verMem(id){
   const m=byId("membresias",id); if(!m)return closeSheet();
@@ -1263,8 +1273,7 @@ const ACT={
   tPausa:async id=>{await timerSet(id,t=>{if(!t.inicio)return;t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});toast("En pausa");verCita(id)},
   tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});
     const tot=tTotal(n);toast("Te corresponden "+money(tot/3600000*pagoHora())+" por "+hTxt(tot));if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+" — te corresponden "+money(tot/3600000*pagoHora())+" (de "+horaTxt(n.timer.empezo||(n.timer.sesiones[0]||{}).ini)+" a "+horaTxt(n.timer.terminado)+"). ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
-  tEditar:async id=>{const c=byId("citas",id);const v=prompt("¿Cuántas horas trabajaste en total? (ej. 2.5)",c.horasReales||Math.round(tTotal(c)/36000)/100);if(v==null)return;const h=num(v);if(!(h>=0))return;
-    await timerSet(id,t=>{t.acum=Math.round(h*3600000);t.inicio=null});toast("Tiempo corregido");verCita(id)},
+  tEditar:id=>formTiempo(id),
   cancelarCita:id=>formCancelar(id),
   cancelMsgEn:id=>copyText(msgCancel(byId("citas",id),"en")),cancelMsgEs:id=>copyText(msgCancel(byId("citas",id),"es")),
   reactivar:async id=>{const c=byId("citas",id);if(await askConfirm("¿Volver a poner esta cita como programada?","Sí, reactivar")){const n=Object.assign({},c,{estado:"programada"});delete n.motivoCancel;delete n.notaCancel;delete n.canceladaEn;await save("citas",n);toast("Cita reactivada");verCita(id)}},
@@ -1322,12 +1331,12 @@ const CHG={citaTotChg:()=>citaTot(),
   pagoCli:el=>{const cs=S.citas.filter(c=>c.clienteId===el.value&&c.estado!=="cancelada").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));$("#pa_cita").innerHTML='<option value="">Ninguna</option>'+opt(cs.map(c=>[c.id,fDate(c.fecha,{day:"numeric",month:"short"})+" · "+(c.servicio||"Servicio")+(saldoCita(c)>0?" · debe "+money(saldoCita(c)):"")]))},
   itemDesc:el=>{const s=S.servicios.find(x=>x.nombre===el.value);const p=el.parentElement.querySelector('[name="iprecio"]');if(s&&num(s.precio)&&!p.value){p.value=s.precio;estTot()}}
 };
-const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{maxPorDia:num(o.maxPorDia),durDefault:num(o.durDefault)||3}));toast("Guardado. Tu página ya muestra los horarios nuevos.")},cliente:submitCliente,cita:submitCita,cancelar:submitCancelar,solcancel:submitSolCancel,revision:submitRevision,gasto:submitGasto,millas:submitMillas,extras:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{resenaUrl:o.resenaUrl||"",diasVolver:num(o.diasVolver)||60,pagoHora:num(o.pagoHora)||25,tarifaMilla:num(o.tarifaMilla)||"",baseDir:o.baseDir||""}));toast("Guardado")},pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
+const SUB={disp:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{maxPorDia:num(o.maxPorDia),durDefault:num(o.durDefault)||3}));toast("Guardado. Tu página ya muestra los horarios nuevos.")},cliente:submitCliente,cita:submitCita,tiempo:submitTiempo,cancelar:submitCancelar,solcancel:submitSolCancel,revision:submitRevision,gasto:submitGasto,millas:submitMillas,extras:async f=>{const o=fd(f);await saveAjustes(Object.assign({},S.ajustes,{resenaUrl:o.resenaUrl||"",diasVolver:num(o.diasVolver)||60,pagoHora:num(o.pagoHora)||25,tarifaMilla:num(o.tarifaMilla)||"",baseDir:o.baseDir||""}));toast("Guardado")},pago:submitPago,est:submitEst,serv:submitServ,plan:submitPlan,mem:submitMem,renovar:submitRenovar,
   ajustes:async f=>{const o=fd(f);try{await saveAjustes(Object.assign({},S.ajustes,{nombre:o.nombre||"AutoLuxuries Auto Detailing",telefono:o.telefono,cobro:o.cobro,firma:o.firma}));toast("Ajustes guardados")}catch(e){}}};
 
 document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;const fn=ACT[el.dataset.act];if(fn){if(el.dataset.act!=="ovclose")e.preventDefault();fn(el.dataset.id,el,e)}});
 document.addEventListener("change",e=>{if(e.target.classList&&e.target.classList.contains("fotoin")){subirFotos(e.target);return}if(e.target.id==="imp_file"&&e.target.files[0]){const f=e.target.files[0];askConfirm("¿Importar este respaldo? Los registros con el mismo código se reemplazan.","Sí, importar").then(ok=>{if(ok)importar(f)});e.target.value="";return}const el=e.target.closest("[data-chg]");if(el&&CHG[el.dataset.chg])CHG[el.dataset.chg](el)});
-document.addEventListener("input",e=>{if(e.target.id==="buscar"){buscar=e.target.value;const pos=e.target.selectionStart;render();const b=$("#buscar");if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(_){}}}else if(e.target.dataset.inp==="estTot")estTot();else if(e.target.dataset.inp==="citaTot")citaTot();else if(e.target.dataset.inp==="pagoTot"){const t=$("#pa_tot");if(t)t.textContent=money(num($("#pa_m").value)+num($("#pa_t").value))}});
+document.addEventListener("input",e=>{if(e.target.id==="buscar"){buscar=e.target.value;const pos=e.target.selectionStart;render();const b=$("#buscar");if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(_){}}}else if(e.target.dataset.inp==="estTot")estTot();else if(e.target.dataset.inp==="citaTot")citaTot();else if(e.target.dataset.inp==="tmCalc"){const ms=tmMs(e.target.form);const t=$("#tm_tot");if(t)t.textContent=ms==null?"—":hTxt(ms)+" · "+money(ms/3600000*pagoHora())}else if(e.target.dataset.inp==="pagoTot"){const t=$("#pa_tot");if(t)t.textContent=money(num($("#pa_m").value)+num($("#pa_t").value))}});
 document.addEventListener("submit",e=>{const f=e.target.closest("[data-form]");if(!f)return;e.preventDefault();const fn=SUB[f.dataset.form];if(fn)fn(f)});
 
 init();
