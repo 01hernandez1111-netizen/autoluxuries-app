@@ -546,6 +546,10 @@ function openSheet(title,body,foot,formName){
   $("#modal").innerHTML='<div class="ov" data-act="ovclose">'+(formName?'<form class="sheet" data-form="'+formName+'" novalidate>'+inner+'</form>':'<div class="sheet">'+inner+'</div>')+'</div>';
 }
 function closeSheet(){$("#modal").innerHTML=""}
+// --- enlace "qué incluye" para el cliente ---
+const INCL_URL=location.origin+location.pathname.replace(/[^/]*$/,"")+"incluye.html";
+function inclUrl(servicios,lang){const ks=[...new Set((servicios||[]).map(n=>{const g=guiaDe(n);return g&&g.k}).filter(k=>k&&k!=="custom"&&k!=="wheel"))];return INCL_URL+"?lang="+lang+(ks.length?"&s="+ks.join(","):"")}
+function inclLinea(servicios,lang){const u=inclUrl(servicios,lang);return lang==="es"?"Vea qué incluye su servicio y cuándo puede cambiar el precio (manchas fuertes, pelo de mascota, moho o peticiones especiales):\n"+u:"See what's included and when the price can change (heavy stains, pet hair, mold or special requests):\n"+u}
 // --- cronómetro por cita ---
 function tTotal(c){const t=c.timer||{};return num(t.acum)+(t.inicio?Date.now()-num(t.inicio):0)}
 function hms(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")}
@@ -890,11 +894,11 @@ function msgConfirmCita(c,lang){
   if(lang==="es"){
     const f=fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"});
     const pr=c.usaMembresia?"Incluido en su membresía":(num(c.descuento)?money(c.precioBase)+" − descuento "+descTxt(c)+" = "+money(c.precio):money(c.precio));
-    return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"es"):"Servicio: "+(c.servicio||"Detallado")+veh)+(c.direccion?"\nDirección: "+c.direccion:"")+"\nPrecio: "+pr+"\n\nSi necesita cambiar la cita, avísenos con al menos 24 horas de anticipación.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+    return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"es"):"Servicio: "+(c.servicio||"Detallado")+veh)+(c.direccion?"\nDirección: "+c.direccion:"")+"\nPrecio: "+pr+"\n\n"+inclLinea(itemsOf(c).map(x=>x.servicio),"es")+"\n\nSi necesita cambiar la cita, avísenos con al menos 24 horas de anticipación.\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
   }
   let fe=c.fecha;try{fe=new Date(c.fecha+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}catch(e){}
   const pr=c.usaMembresia?"Included in your membership":(num(c.descuento)?money(c.precioBase)+" − discount "+descTxt(c)+" = "+money(c.precio):money(c.precio));
-  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"en"):"Service: "+(c.servicio||"Detail")+veh)+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
+  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"en"):"Service: "+(c.servicio||"Detail")+veh)+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\n"+inclLinea(itemsOf(c).map(x=>x.servicio),"en")+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
 }
 function verCita(id){
   const c=byId("citas",id); if(!c)return closeSheet();
@@ -1065,9 +1069,9 @@ async function solAceptar(id){
 }
 function msgConfirm(x){
   const n=negocio(),first=(x.nombre||"").split(" ")[0],f=fDate(x.fecha,{weekday:"long",day:"numeric",month:"long"}),h=fHora(x.hora);
-  if(x.idioma==="es")return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\nServicio: "+(x.servicio||"")+"\nDirección: "+(x.direccion||"")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
+  if(x.idioma==="es")return "Hola "+first+", su cita con "+n.nombre+" está confirmada para el "+f+(h?" a las "+h:"")+".\nServicio: "+(x.servicio||"")+"\nDirección: "+(x.direccion||"")+"\n\n"+inclLinea([x.servicio],"es")+"\n\n"+n.firma+(n.telefono?"\n"+n.telefono:"");
   let fe=f;try{fe=new Date(x.fecha+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}catch(e){}
-  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(x.service||x.servicio||"")+"\nAddress: "+(x.direccion||"")+"\n\nThank you! "+(n.telefono?"\n"+n.telefono:"");
+  return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\nService: "+(x.service||x.servicio||"")+"\nAddress: "+(x.direccion||"")+"\n\n"+inclLinea([x.servicio],"en")+"\n\nThank you! "+(n.telefono?"\n"+n.telefono:"");
 }
 
 // --- verificación de planes de trabajo ---

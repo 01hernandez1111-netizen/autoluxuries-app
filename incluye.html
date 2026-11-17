@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>What's included & extra charges · AutoLuxuries</title>
+<meta name="description" content="What each AutoLuxuries detail includes and when an extra charge may apply: heavy stains, pet hair, mold, excessive dirt or special requests.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Página pública: qué incluye cada servicio y cuándo hay cargo extra. Negro y blanco como la marca. */
+:root{--bg:#f4f4f4;--card:#fff;--ink:#0d0d0d;--muted:#666;--line:#e2e2e2;--warn:#9a5b0c;--warn-bg:#fbf1df;--ok:#2f7d4f;
+  --display:"Sora",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+header{background:#0a0a0a;color:#fff;padding:calc(22px + env(safe-area-inset-top)) 20px 26px}
+header .in{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:6px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.logo{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:.02em}
+.logo span{font-weight:400;opacity:.85}
+.lang{display:flex;border:1px solid #333;border-radius:999px;overflow:hidden}
+.lang button{background:none;border:0;color:#bbb;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
+.lang button.on{background:#fff;color:#0a0a0a}
+header h1{font-family:var(--display);font-size:26px;margin:14px 0 0;font-weight:600;text-wrap:balance}
+header p{margin:0;color:#c4c4c4;max-width:56ch}
+main{max-width:640px;margin:0 auto;padding:18px 16px 48px;display:flex;flex-direction:column;gap:14px}
+.promise{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:14px;padding:14px 16px}
+.promise b{display:block;font-family:var(--display);font-weight:600;margin-bottom:2px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sec summary{list-style:none;cursor:pointer;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.sec summary::-webkit-details-marker{display:none}
+.sec summary h2{font-family:var(--display);font-size:17px;margin:0;font-weight:600}
+.sec summary small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.sec summary .chev{transition:transform .2s;font-size:18px;color:var(--muted)}
+.sec[open] summary .chev{transform:rotate(180deg)}
+.sec.mine{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.tag{display:inline-block;background:var(--ink);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 8px;margin-bottom:4px}
+.body{padding:0 16px 16px}
+.body h3{font-size:14px;margin:12px 0 6px;font-weight:700}
+.body ul{margin:0;padding-left:20px}
+.body li{margin:2px 0}
+.x{background:var(--warn-bg);border-radius:12px;padding:10px 12px;margin-top:10px}
+.x h3{color:var(--warn);margin-top:0}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid rgba(0,0,0,.08);font-size:15px}
+.row:first-of-type{border-top:0}
+.row b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.row .q{color:var(--muted);font-weight:500;font-size:13px;text-align:right}
+.prices{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.prices span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px;font-variant-numeric:tabular-nums}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+footer{max-width:640px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:14px;text-align:center}
+footer a{color:var(--ink);font-weight:700}
+.cta{display:block;text-align:center;background:var(--ink);color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div class="top"><div class="logo">AutoLuxuries <span>Auto Detailing</span></div>
+    <div class="lang" role="group" aria-label="Language"><button type="button" data-l="en">EN</button><button type="button" data-l="es">ES</button></div></div>
+  <h1 id="h1"></h1><p id="sub"></p>
+</div></header>
+<main id="main"></main>
+<footer id="foot"></footer>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const qs=new URLSearchParams(location.search);
+let L=(qs.get("lang")||(navigator.language||"en")).toLowerCase().startsWith("es")?"es":"en";
+const MINE=(qs.get("s")||"").split(",").filter(Boolean);
+const $=q=>document.querySelector(q);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// Precios de respaldo (los reales se leen en vivo de la lista de servicios de la app)
+const P={"full-car":[235],"full-suv":[285],"full-truck":[320],"int-car":[135],"int-suv":[165],"int-truck":[165],"ext-car":[95],"ext-suv":[125],"ext-truck":[145],
+  "paint":[350,1],"ceramic":[950,1],"wheel":[65],"x-mold":[475,1],"x-pet":[35],"x-petstain":[70],"x-shampoo":[15],"x-wax":[50],"x-carnauba":[30],"x-engine":[85],"x-vacuum":[35],
+  "boat-wash":[150,1],"boat-wax":[300,1],"boat-int":[250,1],"rv-wash":[150,1],"rv-wax":[300,1],"rv-full":[400,1]};
+const T={
+  en:{title:"What's included & when the price can change",sub:"We want you to know exactly what you're paying for. Here's what each detail includes and the situations where an extra charge may apply.",
+    promise:["We'll always tell you first","If we find something that needs extra work, we show you and confirm the price with you before doing it. No surprise charges."],
+    yours:"Your service",inc:"What's included",extra:"Extra charge may apply when there is…",addons:"Add-ons you can request",quote:"Quoted on site",from:"from ",
+    special:["Special requests","Anything you ask for that isn't part of the package (for example extra areas, headliner cleaning, odor or bio cleanup, or more time on a specific spot) is quoted before we start."],
+    foot:'Questions? Text us at <a href="sms:+13608596559">360-859-6559</a>.',book:"Book a detail"},
+  es:{title:"Qué incluye y cuándo puede cambiar el precio",sub:"Queremos que sepa exactamente lo que está pagando. Aquí está lo que incluye cada servicio y las situaciones en las que puede haber un cargo adicional.",
+    promise:["Siempre le avisamos primero","Si encontramos algo que necesita trabajo extra, se lo mostramos y confirmamos el precio con usted antes de hacerlo. Sin cargos sorpresa."],
+    yours:"Su servicio",inc:"Qué incluye",extra:"Puede haber cargo adicional cuando hay…",addons:"Extras que puede pedir",quote:"Se cotiza en el lugar",from:"desde ",
+    special:["Peticiones especiales","Cualquier cosa que pida que no esté en el paquete (por ejemplo áreas extra, limpieza del techo interior, olores fuertes o limpieza biológica, o más tiempo en un área específica) se cotiza antes de empezar."],
+    foot:'¿Preguntas? Escríbanos al <a href="sms:+13608596559">360-859-6559</a>.',book:"Agendar un servicio"}};
+const XI=[["Pet hair in carpets, seats or trunk","Pelo de mascota en alfombras, asientos o cajuela","x-pet"],["Pet hair plus stains that need extraction","Pelo de mascota con manchas que necesitan extracción","x-petstain"],["Heavy seat stains that need shampoo & extraction","Manchas fuertes en asientos que necesitan shampoo y extracción","x-shampoo"],["Carpet stains that need extraction","Manchas en alfombras que necesitan extracción",null],["Excessive dirt: mud, sand, lots of trash or spills","Suciedad excesiva: lodo, arena, mucha basura o derrames",null],["Mold inside the vehicle","Moho en el interior","x-mold"]];
+const XE=[["Excessive dirt: caked mud, heavy road grime","Suciedad excesiva: lodo pegado o mucha tierra del camino",null],["Moss, mold or algae buildup on paint, glass or trim","Musgo, moho o lama acumulada en la pintura, vidrios o molduras",null]];
+const OE=[["Hand or machine wax","Cera a mano o con máquina","x-wax"],["Carnauba wax","Cera carnauba","x-carnauba"],["Engine bay cleaning","Limpieza del motor","x-engine"],["Wheel restoration (per wheel)","Restauración de rines (por rin)","wheel"]];
+const XW=[["Heavy oxidation","Mucha oxidación",null],["Mold or mildew","Moho u hongos",null],["Hard water spots","Manchas de agua dura",null],["Bird droppings or tough stains","Excremento de aves o manchas difíciles",null]];
+const G=[
+ {k:"full",t:["Full Detail (inside & out)","Full Detail (por dentro y por fuera)"],ids:[["full-car","Car","Auto"],["full-suv","SUV","SUV"],["full-truck","Truck","Pickup"]],inc:[["Foam pre-wash and hand wash","Prelavado con espuma y lavado a mano"],["Paint decontamination","Descontaminación de la pintura"],["Wheels, tires and rims","Rines, llantas y aros"],["Streak-free glass","Vidrios sin rayas"],["Full interior vacuum and surface cleaning","Aspirado completo y limpieza de superficies"],["Plastic and trim restoration","Restauración de plásticos y molduras"],["Inside windows","Ventanas por dentro"],["Odor removal","Eliminación de olores"]],x:XI.concat(XE),o:OE},
+ {k:"int",t:["Interior Detail","Interior Detail"],ids:[["int-car","Car","Auto"],["int-suv","SUV / Truck","SUV / Pickup"]],inc:[["Deep vacuum of carpets, seats and trunk","Aspirado profundo de alfombras, asientos y cajuela"],["Plastic cleaning and restoration","Limpieza y restauración de plásticos"],["Streak-free inside windows","Ventanas por dentro sin rayas"],["Odor removal","Eliminación de olores"]],x:XI,o:[]},
+ {k:"ext",t:["Exterior Detail","Exterior Detail"],ids:[["ext-car","Car","Auto"],["ext-suv","SUV","SUV"],["ext-truck","Large truck","Pickup grande"]],inc:[["Foam pre-wash and hand wash","Prelavado con espuma y lavado a mano"],["Wheels and tires","Rines y llantas"],["Glass","Vidrios"],["Protective finish for lasting shine","Acabado protector para brillo duradero"]],x:XE,o:OE},
+ {k:"paint",t:["Paint Correction","Corrección de pintura"],ids:[["paint","",""]],inc:[["Machine polishing to remove swirls, light scratches and scuffs","Pulido a máquina para quitar remolinos, rayones ligeros y raspones"],["Restores depth, clarity and gloss","Devuelve profundidad, claridad y brillo"]],x:[["Deep scratches or heavily damaged paint","Rayones profundos o pintura muy dañada",null],["Larger vehicles","Vehículos grandes",null]],o:[],n:["Price depends on vehicle size and paint condition.","El precio depende del tamaño y del estado de la pintura."]},
+ {k:"ceramic",t:["Ceramic Coating","Recubrimiento cerámico"],ids:[["ceramic","",""]],inc:[["Protective layer against sun, rain and contaminants","Capa protectora contra sol, lluvia y contaminantes"],["Deep, glass-like gloss","Brillo profundo tipo vidrio"],["Easier washes","Lavados más fáciles"]],x:[["Paint that needs correction before coating","Pintura que necesita corrección antes de aplicar","paint"],["Larger vehicles","Vehículos grandes",null]],o:[]},
+ {k:"mold",t:["Interior Mold Treatment","Tratamiento de moho en el interior"],ids:[["x-mold","",""]],inc:[["Cleaning of affected areas","Limpieza de las áreas afectadas"],["Steam treatment and disinfection","Tratamiento con vapor y desinfección"],["Odor reduction","Reducción de olor"]],x:[],o:[],n:["Does not include removing seats or carpets, or treating the A/C system.","No incluye quitar asientos o alfombras ni tratar el sistema de aire."]},
+ {k:"boat",t:["Boats","Botes"],ids:[["boat-wash","Wash","Lavado"],["boat-wax","Wash & wax","Lavado y cera"],["boat-int","Interior","Interior"]],inc:[["Hull, deck and trailer foam wash","Lavado con espuma de casco, cubierta y tráiler"],["Wax protects gelcoat from sun and water","La cera protege el gelcoat del sol y el agua"]],x:XW,o:[],n:["Final price depends on length, size and condition.","El precio final depende del largo, el tamaño y el estado."]},
+ {k:"rv",t:["RVs","Casas rodantes (RV)"],ids:[["rv-wash","Wash","Lavado"],["rv-wax","Wash & wax","Lavado y cera"],["rv-full","Full detail","Full detail"]],inc:[["Exterior wash where it's parked","Lavado exterior donde está estacionado"],["Wax for lasting protection","Cera para protección duradera"],["Full detail inside and out","Detallado completo por dentro y por fuera"]],x:XW,o:[],n:["Final price depends on length, size and condition.","El precio final depende del largo, el tamaño y el estado."]}
+];
+const li=L=>L==="es"?1:0;
+function precio(id){const p=P[id];if(!p)return "";const money=n=>"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});return (p[1]?T[L].from:"")+money(p[0])}
+function rows(arr){return arr.map(r=>{const pr=r[2]?precio(r[2]):"";return '<div class="row"><span>'+esc(r[li(L)])+'</span>'+(pr?'<b>'+esc(pr)+'</b>':'<span class="q">'+T[L].quote+'</span>')+'</div>'}).join("")}
+function render(){const t=T[L];document.documentElement.lang=L;document.title=(L==="es"?"Qué incluye y cargos extra":"What's included & extra charges")+" · AutoLuxuries";
+  document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.l===L));
+  $("#h1").textContent=t.title;$("#sub").textContent=t.sub;
+  const orden=G.slice().sort((a,b)=>(MINE.includes(b.k)?1:0)-(MINE.includes(a.k)?1:0));
+  let h='<div class="promise"><b>'+esc(t.promise[0])+'</b>'+esc(t.promise[1])+'</div>';
+  h+=orden.map(g=>{const mine=MINE.includes(g.k);return '<details class="sec'+(mine?" mine":"")+'" '+(mine||(!MINE.length&&g.k==="full")?"open":"")+' id="'+g.k+'"><summary><div>'+(mine?'<span class="tag">'+t.yours+'</span>':"")+'<h2>'+esc(g.t[li(L)])+'</h2><div class="prices">'+g.ids.map(([id,en,es])=>'<span>'+esc((L==="es"?es:en)?((L==="es"?es:en)+" · "):"")+esc(precio(id))+'</span>').join("")+'</div></div><span class="chev" aria-hidden="true">⌄</span></summary><div class="body">'+
+    '<h3>'+t.inc+'</h3><ul>'+g.inc.map(i=>'<li>'+esc(i[li(L)])+'</li>').join("")+'</ul>'+
+    (g.x.length?'<div class="x"><h3>'+t.extra+'</h3>'+rows(g.x)+'</div>':"")+
+    (g.o.length?'<h3>'+t.addons+'</h3>'+rows(g.o):"")+
+    (g.n?'<p class="note">'+esc(g.n[li(L)])+'</p>':"")+'</div></details>'}).join("");
+  h+='<div class="promise"><b>'+esc(t.special[0])+'</b>'+esc(t.special[1])+'</div>';
+  h+='<a class="cta" href="reservar.html">'+t.book+'</a>';
+  $("#main").innerHTML=h;$("#foot").innerHTML=t.foot}
+document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l;render()}));
+render();
+// Precios en vivo desde la lista de servicios de la app
+try{const app=initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
+  const snap=await getDocs(collection(getFirestore(app),"servicios"));let n=0;
+  snap.docs.forEach(d=>{if(!d.id.startsWith("web-"))return;const k=d.id.slice(4),v=d.data();if(P[k]&&v&&v.precio!=null&&!isNaN(Number(v.precio))){P[k]=[Number(v.precio),v.desde?1:0];n++}});
+  if(n)render()}catch(e){}
+</script>
+</body>
+</html>
