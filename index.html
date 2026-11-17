@@ -550,12 +550,19 @@ function closeSheet(){$("#modal").innerHTML=""}
 function tTotal(c){const t=c.timer||{};return num(t.acum)+(t.inicio?Date.now()-num(t.inicio):0)}
 function hms(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")}
 function hTxt(ms){const m=Math.round(ms/60000);const h=Math.floor(m/60);return (h?h+" h ":"")+(m%60)+" min"}
+function horaTxt(ts){try{return new Date(num(ts)).toLocaleTimeString("es-US",{hour:"numeric",minute:"2-digit"})}catch(e){return ""}}
+function sesionesDe(c){const t=c.timer||{};const ss=(t.sesiones||[]).slice();if(t.inicio)ss.push({ini:t.inicio,fin:null});return ss}
+function horasTimer(c){const t=c.timer||{},ss=sesionesDe(c);if(!ss.length)return "";const empezo=t.empezo||ss[0].ini;const fin=t.inicio?null:(t.terminado||ss[ss.length-1].fin);
+  let h='<div class="kv" style="margin-top:4px"><div><span>Empezaste</span><span>'+horaTxt(empezo)+'</span></div><div><span>Terminaste</span><span>'+(fin?horaTxt(fin):'<span style="color:var(--muted)">'+(t.inicio?"trabajando…":"en pausa")+'</span>')+'</span></div>';
+  if(ss.length>1){const pausas=ss.slice(1).reduce((a,x,i)=>a+(num(x.ini)-num(ss[i].fin||x.ini)),0);
+    h+='<div><span>Tramos</span><span style="text-align:right">'+ss.map(x=>horaTxt(x.ini)+" – "+(x.fin?horaTxt(x.fin):"ahora")).join("<br>")+'</span></div>'+(pausas>60000?'<div><span>Pausas</span><span>'+hTxt(pausas)+'</span></div>':"")}
+  return h+'</div>'}
 function corriendo(){return S.citas.filter(c=>c.timer&&c.timer.inicio)}
 function seccionTimer(c){const t=c.timer||{},on=!!t.inicio,tot=tTotal(c);if(c.estado==="cancelada"&&!tot)return "";
   let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
   if(on)h+='<button type="button" class="btn" data-act="tPausa" data-id="'+c.id+'">⏸ Pausar</button><button type="button" class="btn dark" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>';
   else if(c.estado==="programada")h+='<button type="button" class="btn dark" data-act="tIni" data-id="'+c.id+'">▶ '+(tot?"Seguir":"Empezar")+'</button>'+(tot?'<button type="button" class="btn" data-act="tFin" data-id="'+c.id+'">⏹ Terminar</button>':"");
-  h+=(tot&&!on?'<button type="button" class="btn sm" data-act="tEditar" data-id="'+c.id+'">Corregir tiempo</button>':"")+'</div>';
+  h+=(tot&&!on?'<button type="button" class="btn sm" data-act="tEditar" data-id="'+c.id+'">Corregir tiempo</button>':"")+'</div>'+horasTimer(c);
   if(c.horasReales)h+='<p class="note" style="margin:0">Tiempo total: <b>'+hTxt(c.horasReales*3600000)+'</b>'+(num(c.precio)?' · '+money(num(c.precio)/c.horasReales)+' por hora':"")+'</p>';
   return h+'</div>'}
 async function timerSet(id,fn){const c=byId("citas",id);if(!c)return;const t=Object.assign({acum:0,inicio:null,sesiones:[]},c.timer||{});fn(t,c);
@@ -1139,10 +1146,10 @@ const ACT={
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
   tIni:async id=>{const otro=corriendo().find(c=>c.id!==id);if(otro&&!(await askConfirm("Ya tienes corriendo el tiempo de "+cliNombre(otro.clienteId)+". ¿Lo pausamos y empezamos este?","Sí, cambiar")))return;
     if(otro)await timerSet(otro.id,t=>{t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});
-    await timerSet(id,t=>{t.inicio=Date.now()});toast("Tiempo corriendo");verCita(id)},
+    await timerSet(id,t=>{t.inicio=Date.now();if(!t.empezo)t.empezo=t.inicio;delete t.terminado});toast("Empezaste a las "+horaTxt(Date.now()));verCita(id)},
   tPausa:async id=>{await timerSet(id,t=>{if(!t.inicio)return;t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});toast("En pausa");verCita(id)},
   tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});
-    const tot=tTotal(n);if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+". ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
+    const tot=tTotal(n);if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+" (de "+horaTxt(n.timer.empezo||(n.timer.sesiones[0]||{}).ini)+" a "+horaTxt(n.timer.terminado)+"). ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
   tEditar:async id=>{const c=byId("citas",id);const v=prompt("¿Cuántas horas trabajaste en total? (ej. 2.5)",c.horasReales||Math.round(tTotal(c)/36000)/100);if(v==null)return;const h=num(v);if(!(h>=0))return;
     await timerSet(id,t=>{t.acum=Math.round(h*3600000);t.inicio=null});toast("Tiempo corregido");verCita(id)},
   cancelarCita:id=>formCancelar(id),
