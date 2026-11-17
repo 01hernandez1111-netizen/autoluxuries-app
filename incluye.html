@@ -85,12 +85,12 @@ const P={"full-car":[235],"full-suv":[285],"full-truck":[320],"int-car":[135],"i
 const T={
   en:{title:"What's included & when the price can change",sub:"We want you to know exactly what you're paying for. Here's what each detail includes and the situations where an extra charge may apply.",
     promise:["We'll always tell you first","If we find something that needs extra work, we show you and confirm the price with you before doing it. No surprise charges."],
-    yours:"Your service",inc:"What's included",extra:"Extra charge may apply when there is…",addons:"Add-ons you can request",quote:"Quoted on site",from:"from ",
+    yours:"Your service",inc:"What's included",extra:"Extra charge may apply when there is…",addons:"Add-ons you can request",dep:"Prices start at the amount shown. The final price depends on your vehicle (size and type) and its condition, and we always confirm it with you before doing the work.",quote:"Quoted on site",from:"from ",
     special:["Special requests","Anything you ask for that isn't part of the package (for example extra areas, headliner cleaning, odor or bio cleanup, or more time on a specific spot) is quoted before we start."],
     foot:'Questions? Text us at <a href="sms:+13608596559">360-859-6559</a>.',book:"Book a detail"},
   es:{title:"Qué incluye y cuándo puede cambiar el precio",sub:"Queremos que sepa exactamente lo que está pagando. Aquí está lo que incluye cada servicio y las situaciones en las que puede haber un cargo adicional.",
     promise:["Siempre le avisamos primero","Si encontramos algo que necesita trabajo extra, se lo mostramos y confirmamos el precio con usted antes de hacerlo. Sin cargos sorpresa."],
-    yours:"Su servicio",inc:"Qué incluye",extra:"Puede haber cargo adicional cuando hay…",addons:"Extras que puede pedir",quote:"Se cotiza en el lugar",from:"desde ",
+    yours:"Su servicio",inc:"Qué incluye",extra:"Puede haber cargo adicional cuando hay…",addons:"Extras que puede pedir",dep:"Los precios empiezan desde la cantidad que se muestra. El precio final depende de su vehículo (tamaño y tipo) y de su condición, y siempre lo confirmamos con usted antes de hacer el trabajo.",quote:"Se cotiza en el lugar",from:"desde ",
     special:["Peticiones especiales","Cualquier cosa que pida que no esté en el paquete (por ejemplo áreas extra, limpieza del techo interior, olores fuertes o limpieza biológica, o más tiempo en un área específica) se cotiza antes de empezar."],
     foot:'¿Preguntas? Escríbanos al <a href="sms:+13608596559">360-859-6559</a>.',book:"Agendar un servicio"}};
 const XI=[["Pet hair in carpets, seats or trunk","Pelo de mascota en alfombras, asientos o cajuela","x-pet"],["Pet hair plus stains that need extraction","Pelo de mascota con manchas que necesitan extracción","x-petstain"],["Heavy seat stains that need shampoo & extraction","Manchas fuertes en asientos que necesitan shampoo y extracción","x-shampoo"],["Carpet stains that need extraction","Manchas en alfombras que necesitan extracción",null],["Excessive dirt: mud, sand, lots of trash or spills","Suciedad excesiva: lodo, arena, mucha basura o derrames",null],["Mold inside the vehicle","Moho en el interior","x-mold"]];
@@ -109,7 +109,8 @@ const G=[
 ];
 const li=L=>L==="es"?1:0;
 function precio(id){const p=P[id];if(!p)return "";const money=n=>"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});return (p[1]?T[L].from:"")+money(p[0])}
-function rows(arr){return arr.map(r=>{const pr=r[2]?precio(r[2]):"";return '<div class="row"><span>'+esc(r[li(L)])+'</span>'+(pr?'<b style="text-align:right">'+esc(pr)+(P[r[2]]&&P[r[2]][1]?'<br><span class="q">'+(L==="es"?"se cotiza":"quoted on site")+'</span>':"")+'</b>':'<span class="q">'+T[L].quote+'</span>')+'</div>'}).join("")}
+function precioDesde(id){const p=P[id];if(!p)return "";return T[L].from+"$"+Number(p[0]).toLocaleString("en-US",{maximumFractionDigits:2})}
+function rows(arr){return arr.map(r=>{const pr=r[2]?precioDesde(r[2]):"";return '<div class="row"><span>'+esc(r[li(L)])+'</span>'+(pr?'<b style="text-align:right">'+esc(pr)+'</b>':'<span class="q">'+T[L].quote+'</span>')+'</div>'}).join("")}
 function render(){const t=T[L];document.documentElement.lang=L;document.title=(L==="es"?"Qué incluye y cargos extra":"What's included & extra charges")+" · AutoLuxuries";
   document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.l===L));
   $("#h1").textContent=t.title;$("#sub").textContent=t.sub;
@@ -117,8 +118,8 @@ function render(){const t=T[L];document.documentElement.lang=L;document.title=(L
   let h='<div class="promise"><b>'+esc(t.promise[0])+'</b>'+esc(t.promise[1])+'</div>';
   h+=orden.map(g=>{const mine=MINE.includes(g.k);return '<details class="sec'+(mine?" mine":"")+'" '+(mine||(!MINE.length&&g.k==="full")?"open":"")+' id="'+g.k+'"><summary><div>'+(mine?'<span class="tag">'+t.yours+'</span>':"")+'<h2>'+esc(g.t[li(L)])+'</h2><div class="prices">'+g.ids.map(([id,en,es])=>'<span>'+esc((L==="es"?es:en)?((L==="es"?es:en)+" · "):"")+esc(precio(id))+'</span>').join("")+'</div></div><span class="chev" aria-hidden="true">⌄</span></summary><div class="body">'+
     '<h3>'+t.inc+'</h3><ul>'+g.inc.map(i=>'<li>'+esc(i[li(L)])+'</li>').join("")+'</ul>'+
-    (g.x.length?'<div class="x"><h3>'+t.extra+'</h3>'+rows(g.x)+'</div>':"")+
-    (g.o.length?'<h3>'+t.addons+'</h3>'+rows(g.o):"")+
+    (g.x.length?'<div class="x"><h3>'+t.extra+'</h3>'+rows(g.x)+'<p class="note" style="margin-top:6px">'+t.dep+'</p></div>':"")+
+    (g.o.length?'<h3>'+t.addons+'</h3>'+rows(g.o)+'<p class="note">'+t.dep+'</p>':"")+
     (g.n?'<p class="note">'+esc(g.n[li(L)])+'</p>':"")+'</div></details>'}).join("");
   h+='<div class="promise"><b>'+esc(t.special[0])+'</b>'+esc(t.special[1])+'</div>';
   h+='<a class="cta" href="reservar.html">'+t.book+'</a>';

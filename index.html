@@ -551,7 +551,7 @@ function closeSheet(){$("#modal").innerHTML=""}
 // --- enlace "qué incluye" para el cliente ---
 const INCL_URL=location.origin+location.pathname.replace(/[^/]*$/,"")+"incluye.html";
 function inclUrl(servicios,lang){const ks=[...new Set((servicios||[]).map(n=>{const g=guiaDe(n);return g&&g.k}).filter(k=>k&&k!=="custom"&&k!=="wheel"))];return INCL_URL+"?lang="+lang+(ks.length?"&s="+ks.join(","):"")}
-function inclLinea(servicios,lang){const u=inclUrl(servicios,lang);return lang==="es"?"Vea qué incluye su servicio y cuándo puede cambiar el precio (manchas fuertes, pelo de mascota, moho o peticiones especiales):\n"+u:"See what's included and when the price can change (heavy stains, pet hair, mold or special requests):\n"+u}
+function inclLinea(servicios,lang){const u=inclUrl(servicios,lang);return lang==="es"?"Vea qué incluye su servicio, los extras que puede pedir y cuándo puede cambiar el precio (manchas fuertes, pelo de mascota, moho o peticiones especiales). Los precios de los extras empiezan desde la cantidad indicada y dependen de su vehículo y su condición:\n"+u:"See what's included, the add-ons you can request and when the price can change (heavy stains, pet hair, mold or special requests). Add-on prices start at the amount shown and depend on your vehicle and its condition:\n"+u}
 // --- cronómetro por cita ---
 function tTotal(c){const t=c.timer||{};return num(t.acum)+(t.inicio?Date.now()-num(t.inicio):0)}
 function hms(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")}
