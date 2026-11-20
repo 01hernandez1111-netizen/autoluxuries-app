@@ -681,12 +681,12 @@ async function submitTiempo(f){const id=f.id.value,c=byId("citas",id);if(!c)retu
   await timerSet(id,t=>{t.acum=ms;t.inicio=null;if(ini){t.empezo=ini;t.terminado=fin;t.sesiones=[{ini,fin}]}});toast("Tiempo guardado: "+hTxt(ms));verCita(id)}
 // mensajes de llegada y de trabajo terminado
 function msgLlegue(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];
-  if(lang==="es")return "Hola "+first+", le saluda "+n.nombre+". Ya llegué para su cita y estoy afuera. Cuando esté listo(a), avíseme y empiezo con el servicio. ¡Gracias!";
-  return "Hi "+first+", this is "+n.nombre+". I've arrived for your appointment and I'm parked outside. Just let me know when you're ready and I'll get started. Thank you!"}
+  if(lang==="es")return "Hola "+first+", le saluda "+n.nombre+". Ya estoy aquí afuera, listo para empezar. Cuando guste, puede salir y comenzamos. ¡Gracias!";
+  return "Hi "+first+", this is "+n.nombre+". I'm here and parked outside, ready to get started. Come on out whenever you're ready. Thank you!"}
 function msgTermine(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];const varios=itemsOf(c).length>1;
   const debe=c.usaMembresia?0:Math.max(0,num(c.precio)-pagadoCita(c.id));
-  if(lang==="es")return "Hola "+first+", ¡"+(varios?"sus vehículos ya están listos":"su vehículo ya está listo")+"! Lo invito a revisar"+(varios?"los":"lo")+" cuando guste, y si hay algo que quiera que repase antes de irme, con gusto lo hago."+(debe?" El total es de "+money(debe)+".":"")+"\n\nGracias por su confianza.\n"+n.nombre+(n.telefono?"\n"+n.telefono:"");
-  return "Hi "+first+", your "+(varios?"vehicles are":"vehicle is")+" all done! Feel free to take a look whenever you're ready, and if there's anything you'd like me to go over before I leave, I'm happy to do it."+(debe?" Your total is "+money(debe)+".":"")+"\n\nThank you for your business!\n"+n.nombre+(n.telefono?"\n"+n.telefono:"")}
+  if(lang==="es")return "Hola "+first+", ¡"+(varios?"sus vehículos están listos":"su vehículo está listo")+"! Cuando guste, puede salir y le entrego las llaves para que "+(varios?"los":"lo")+" revise con calma."+(debe?" El total es de "+money(debe)+".":"")+"\n\n"+n.nombre;
+  return "Hi "+first+", your "+(varios?"vehicles are":"vehicle is")+" ready! Come on out whenever you'd like and I'll hand you the keys so you can take a look."+(debe?" Your total is "+money(debe)+".":"")+"\n\n"+n.nombre}
 function pagoHora(){return num(S.ajustes&&S.ajustes.pagoHora)||25}
 function seccionTimer(c){const t=c.timer||{},on=!!t.inicio,tot=tTotal(c);if(c.estado==="cancelada"&&!tot)return "";
   let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot&&(t.terminado||c.estado==="completada")?"Terminado":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
