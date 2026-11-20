@@ -679,6 +679,14 @@ async function submitTiempo(f){const id=f.id.value,c=byId("citas",id);if(!c)retu
   if(num(f.horas.value)>0)ms=Math.round(num(f.horas.value)*3600000);
   else{ms=tmMs(f);if(ms==null)return toast("Pon la hora de inicio y de fin, o el total de horas.");const d=c.fecha||today();ini=new Date(d+"T"+f.ini.value+":00").getTime();fin=new Date(d+"T"+f.fin.value+":00").getTime();if(fin<ini)fin+=864e5}
   await timerSet(id,t=>{t.acum=ms;t.inicio=null;if(ini){t.empezo=ini;t.terminado=fin;t.sesiones=[{ini,fin}]}});toast("Tiempo guardado: "+hTxt(ms));verCita(id)}
+// mensajes de llegada y de trabajo terminado
+function msgLlegue(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];
+  if(lang==="es")return "Hola "+first+", le saluda "+n.nombre+". Ya llegué para su cita y estoy afuera. Cuando esté listo(a), avíseme y empiezo con el servicio. ¡Gracias!";
+  return "Hi "+first+", this is "+n.nombre+". I've arrived for your appointment and I'm parked outside. Just let me know when you're ready and I'll get started. Thank you!"}
+function msgTermine(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];const varios=itemsOf(c).length>1;
+  const debe=c.usaMembresia?0:Math.max(0,num(c.precio)-pagadoCita(c.id));
+  if(lang==="es")return "Hola "+first+", ¡"+(varios?"sus vehículos ya están listos":"su vehículo ya está listo")+"! Lo invito a revisar"+(varios?"los":"lo")+" cuando guste, y si hay algo que quiera que repase antes de irme, con gusto lo hago."+(debe?" El total es de "+money(debe)+".":"")+"\n\nGracias por su confianza.\n"+n.nombre+(n.telefono?"\n"+n.telefono:"");
+  return "Hi "+first+", your "+(varios?"vehicles are":"vehicle is")+" all done! Feel free to take a look whenever you're ready, and if there's anything you'd like me to go over before I leave, I'm happy to do it."+(debe?" Your total is "+money(debe)+".":"")+"\n\nThank you for your business!\n"+n.nombre+(n.telefono?"\n"+n.telefono:"")}
 function pagoHora(){return num(S.ajustes&&S.ajustes.pagoHora)||25}
 function seccionTimer(c){const t=c.timer||{},on=!!t.inicio,tot=tTotal(c);if(c.estado==="cancelada"&&!tot)return "";
   let h='<div class="section"><h2>Tiempo de trabajo</h2><div class="timer'+(on?" on":"")+'"><span class="tclock" data-timer="'+c.id+'">'+hms(tot)+'</span><span class="s">'+(on?"Corriendo…":tot&&(t.terminado||c.estado==="completada")?"Terminado":tot?"En pausa":"Sin empezar")+'</span></div><div class="btns">';
@@ -1035,6 +1043,7 @@ function verCita(id){
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+(num(p.propina)?'<br><small style="color:var(--ok)">+ '+money(p.propina)+' propina</small>':"")+'</span></div>').join("")+'</div></div>';
   let acts='';
   if(c.estado==="completada")acts+='<button type="button" class="btn" data-act="resenaEn" data-id="'+id+'">Pedir reseña (English)</button><button type="button" class="btn" data-act="resenaEs" data-id="'+id+'">Pedir reseña (Español)</button>'+(c.resenaPedida?'<span class="pill p-ok" style="align-self:center">Reseña pedida '+esc(fDate(c.resenaPedida,{day:"numeric",month:"short"}))+'</span>':"");
+  if(c.estado!=="cancelada")b+='<div class="section"><h2>Mensajes al cliente</h2><div class="btns" style="margin:0">'+(c.estado==="programada"?'<button type="button" class="btn" data-act="llegueEn" data-id="'+id+'">📍 Ya llegué (English)</button><button type="button" class="btn" data-act="llegueEs" data-id="'+id+'">📍 Ya llegué (Español)</button>':"")+'<button type="button" class="btn" data-act="termineEn" data-id="'+id+'">✅ Ya terminé (English)</button><button type="button" class="btn" data-act="termineEs" data-id="'+id+'">✅ Ya terminé (Español)</button></div></div>';
   if(c.estado==="programada")acts+='<button type="button" class="btn" data-act="confCitaEn" data-id="'+id+'">Copiar confirmación (English)</button><button type="button" class="btn" data-act="confCitaEs" data-id="'+id+'">Copiar confirmación (Español)</button>';
   if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button><button type="button" class="btn danger" data-act="cancelarCita" data-id="'+id+'">Cancelar cita</button>';
   if(c.estado==="cancelada"){b+='<p class="note" style="margin:0"><b>Cancelada</b>'+(c.canceladaEn?" el "+esc(fDate(c.canceladaEn,{day:"numeric",month:"short"})):"")+(c.motivoCancel?": "+esc(c.motivoCancel):"")+(c.notaCancel?" — "+esc(c.notaCancel):"")+'. Los datos del cliente siguen guardados.</p>';
@@ -1274,6 +1283,8 @@ const ACT={
   tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});
     const tot=tTotal(n);toast("Te corresponden "+money(tot/3600000*pagoHora())+" por "+hTxt(tot));if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+" — te corresponden "+money(tot/3600000*pagoHora())+" (de "+horaTxt(n.timer.empezo||(n.timer.sesiones[0]||{}).ini)+" a "+horaTxt(n.timer.terminado)+"). ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
   tEditar:id=>formTiempo(id),
+  llegueEn:id=>copyText(msgLlegue(byId("citas",id),"en")),llegueEs:id=>copyText(msgLlegue(byId("citas",id),"es")),
+  termineEn:id=>copyText(msgTermine(byId("citas",id),"en")),termineEs:id=>copyText(msgTermine(byId("citas",id),"es")),
   cancelarCita:id=>formCancelar(id),
   cancelMsgEn:id=>copyText(msgCancel(byId("citas",id),"en")),cancelMsgEs:id=>copyText(msgCancel(byId("citas",id),"es")),
   reactivar:async id=>{const c=byId("citas",id);if(await askConfirm("¿Volver a poner esta cita como programada?","Sí, reactivar")){const n=Object.assign({},c,{estado:"programada"});delete n.motivoCancel;delete n.notaCancel;delete n.canceladaEn;await save("citas",n);toast("Cita reactivada");verCita(id)}},
