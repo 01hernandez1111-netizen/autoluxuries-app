@@ -61,6 +61,12 @@ form{display:flex;flex-direction:column;gap:16px}
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 30px}
 @media (max-width:420px){.g2{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,1fr)}}
+.xlist{display:flex;flex-direction:column;gap:6px}
+.xlist label{display:flex;align-items:center;gap:10px;border:1px solid var(--line,#e2e2e2);border-radius:12px;padding:11px 12px;cursor:pointer;font-size:15px;background:#fff}
+.xlist label:has(input:checked){border-color:#0a0a0a;box-shadow:0 0 0 1px #0a0a0a}
+.xlist input{width:20px;height:20px;accent-color:#0a0a0a;flex:0 0 auto}
+.xlist .xn{flex:1}
+.xlist .xp{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -77,6 +83,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;padding:0 16px 30px}
     <div class="types" id="types"></div>
     <div class="f"><label for="b_serv" data-t="serv">Service</label><select id="b_serv" required></select></div>
     <p class="note" id="b_sdesc" style="margin:0"></p>
+    <div class="f" id="b_xwrap" hidden><label data-t="extras">Add extras (optional)</label><div class="xlist" id="b_extras"></div><p class="note" id="b_est" style="margin:4px 0 0"></p></div>
     <div class="f"><label for="b_veh" data-t="veh">Vehicle (year, make, model)</label><input id="b_veh" maxlength="120" placeholder="2021 Toyota RAV4"></div>
   </div>
   <div class="card">
@@ -116,10 +123,12 @@ const NTFY = "https://ntfy.sh/autoluxuries-35e5b24555232d2e";
 const APP_URL = new URL("./#solicitudes", location.href).href;
 
 const T = {
- en:{h1:"Book your mobile detail",sub:"We come to your home or work. Send your request and we'll confirm your appointment by text.",c1:"Cars · SUVs · Trucks",c2:"Boats & RVs",c3:"7 days · 8 am – 5 pm",s1:"What do you need?",serv:"Service",veh:"Vehicle (year, make, model)",s2:"Pick a day and time",date:"Date",time:"Start time",tnote:"This is a request. We'll text you to confirm the time.",s3:"Your information",name:"Full name",tel:"Phone",mail:"Email (optional)",addr:"Service address",notes:"Anything we should know? (optional)",send:"Send request",sending:"Sending…",ok1:"Request sent!",ok2:"Thank you. We'll text you soon to confirm your appointment.",choose:"Choose a service…",other:"Not sure / other",
+ en:{h1:"Book your mobile detail",sub:"We come to your home or work. Send your request and we'll confirm your appointment by text.",c1:"Cars · SUVs · Trucks",c2:"Boats & RVs",c3:"7 days · 8 am – 5 pm",s1:"What do you need?",serv:"Service",veh:"Vehicle (year, make, model)",s2:"Pick a day and time",date:"Date",time:"Start time",tnote:"This is a request. We'll text you to confirm the time.",s3:"Your information",name:"Full name",tel:"Phone",mail:"Email (optional)",addr:"Service address",notes:"Anything we should know? (optional)",send:"Send request",sending:"Sending…",ok1:"Request sent!",ok2:"Thank you. We'll text you soon to confirm your appointment.",choose:"Choose a service…",other:"Not sure / other",extras:"Add extras (optional)",from:"from ",est:"Estimated total: from ",estn:"Final price depends on your vehicle and its condition. We confirm it before we start.",
+  xn:{"x-pet":"Pet hair removal","x-petstain":"Pet hair + stain extraction","x-shampoo":"Seat shampoo & extraction","x-wax":"Hand or machine wax","x-carnauba":"Carnauba wax","x-engine":"Engine bay cleaning","fab":"Fabric protection (all seats)"},
   types:["Car","SUV","Truck","Boat","RV","Other"],
   e_serv:"Choose a service.",e_date:"Choose a date.",e_time:"Choose a start time.",e_name:"Write your name.",e_tel:"Write a phone number we can text.",e_addr:"Write the service address.",e_send:"We couldn't send your request. Check your internet and try again.",full:"This day is fully booked. Please choose another date.",taken:"That time was just booked. Please choose another time."},
- es:{h1:"Agenda tu detallado a domicilio",sub:"Vamos a tu casa o trabajo. Manda tu solicitud y te confirmamos la cita por mensaje.",c1:"Autos · SUVs · Pickups",c2:"Botes y RVs",c3:"7 días · 8 am – 5 pm",s1:"¿Qué necesitas?",serv:"Servicio",veh:"Vehículo (año, marca, modelo)",s2:"Elige día y hora",date:"Fecha",time:"Hora de inicio",tnote:"Es una solicitud. Te mandamos mensaje para confirmar la hora.",s3:"Tus datos",name:"Nombre completo",tel:"Teléfono",mail:"Correo (opcional)",addr:"Dirección del servicio",notes:"¿Algo que debamos saber? (opcional)",send:"Mandar solicitud",sending:"Mandando…",ok1:"¡Solicitud enviada!",ok2:"Gracias. Pronto te mandamos mensaje para confirmar tu cita.",choose:"Elige un servicio…",other:"No sé / otro",
+ es:{h1:"Agenda tu detallado a domicilio",sub:"Vamos a tu casa o trabajo. Manda tu solicitud y te confirmamos la cita por mensaje.",c1:"Autos · SUVs · Pickups",c2:"Botes y RVs",c3:"7 días · 8 am – 5 pm",s1:"¿Qué necesitas?",serv:"Servicio",veh:"Vehículo (año, marca, modelo)",s2:"Elige día y hora",date:"Fecha",time:"Hora de inicio",tnote:"Es una solicitud. Te mandamos mensaje para confirmar la hora.",s3:"Tus datos",name:"Nombre completo",tel:"Teléfono",mail:"Correo (opcional)",addr:"Dirección del servicio",notes:"¿Algo que debamos saber? (opcional)",send:"Mandar solicitud",sending:"Mandando…",ok1:"¡Solicitud enviada!",ok2:"Gracias. Pronto te mandamos mensaje para confirmar tu cita.",choose:"Elige un servicio…",other:"No sé / otro",extras:"Agrega extras (opcional)",from:"desde ",est:"Total estimado: desde ",estn:"El precio final depende de tu vehículo y su condición. Te lo confirmamos antes de empezar.",
+  xn:{"x-pet":"Quitar pelo de mascota","x-petstain":"Pelo de mascota + extracción de manchas","x-shampoo":"Shampoo y extracción de asientos","x-wax":"Cera a mano o con máquina","x-carnauba":"Cera carnauba","x-engine":"Limpieza del motor","fab":"Protección de tela (todos los asientos)"},
   types:["Auto","SUV","Pickup","Bote","RV","Otro"],
   e_serv:"Elige un servicio.",e_date:"Elige una fecha.",e_time:"Elige una hora.",e_name:"Escribe tu nombre.",e_tel:"Escribe un teléfono para mandarte mensaje.",e_addr:"Escribe la dirección del servicio.",e_send:"No se pudo mandar. Revisa tu internet e intenta otra vez.",full:"Este día ya está lleno. Elige otra fecha, por favor.",taken:"Esa hora se acaba de ocupar. Elige otra, por favor."}
 };
@@ -162,29 +171,45 @@ function renderServ(){
   const tipo=(document.querySelector('input[name="tipo"]:checked')||{}).value||"Auto";
   const cats=CAT_FOR[tipo];
   const prev=$("#b_serv").value;
-  let list=servicios.filter(s=>!cats||cats.includes(s.categoria)||s.categoria==="Otro");
+  let list=servicios.filter(s=>!XIDS.includes((s._id||"").replace(/^web-/,""))&&s.categoria!=="Protección de tela"&&(!cats||cats.includes(s.categoria)||s.categoria==="Otro"));
   if(!list.length)list=servicios;
   const o=['<option value="">'+T[lang].choose+'</option>'].concat(list.map(s=>'<option'+(s.nombre===prev?" selected":"")+'>'+s.nombre.replace(/</g,"&lt;")+'</option>'));
   o.push('<option value="__otro"'+(prev==="__otro"?" selected":"")+'>'+T[lang].other+'</option>');
   $("#b_serv").innerHTML=o.join("");
 }
+const XIDS=["x-pet","x-petstain","x-shampoo","x-wax","x-carnauba","x-engine"];
+const FAB_FOR={"Auto":"fab-seats-car","SUV / Camioneta":"fab-seats-suv","Pickup":"fab-seats-suv"};
+const money=n=>"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+function extrasDisp(){const tipo=(document.querySelector('input[name="tipo"]:checked')||{}).value||"Auto";const out=[];
+  if(["Bote","RV / Casa rodante"].includes(tipo))return out;
+  XIDS.forEach(k=>{const s=servicios.find(x=>x._id==="web-"+k);if(s)out.push({k,s})});
+  const f=FAB_FOR[tipo];if(f){const s=servicios.find(x=>x._id==="web-"+f);if(s)out.push({k:"fab",s})}
+  return out}
+function renderExtras(){const t=T[lang],ex=extrasDisp(),prev=[...document.querySelectorAll('#b_extras input:checked')].map(i=>i.value);
+  $("#b_xwrap").hidden=!ex.length;
+  $("#b_extras").innerHTML=ex.map(({k,s})=>'<label><input type="checkbox" value="'+s.nombre.replace(/"/g,"&quot;")+'" data-p="'+(Number(s.precio)||0)+'"'+(prev.includes(s.nombre)?" checked":"")+'><span class="xn">'+(t.xn[k]||s.nombre)+'</span><span class="xp">'+t.from+money(s.precio)+'</span></label>').join("");
+  estimar()}
+function estimar(){const t=T[lang],sv=servicios.find(x=>x.nombre===$("#b_serv").value);const xs=[...document.querySelectorAll('#b_extras input:checked')];
+  if(!sv||!xs.length){$("#b_est").textContent="";return}
+  const tot=(Number(sv.precio)||0)+xs.reduce((a,i)=>a+Number(i.dataset.p||0),0);$("#b_est").textContent=t.est+money(tot)+". "+t.estn}
 function applyLang(){
   document.documentElement.lang=lang;
   document.querySelectorAll("[data-t]").forEach(el=>{const k=el.dataset.t;if(T[lang][k])el.textContent=T[lang][k]});
   document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.lang===lang));
-  renderTypes();renderServ();renderTimes();
+  renderTypes();renderServ();renderTimes();renderExtras();
 }
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{lang=b.dataset.lang;applyLang()}));
-$("#types").addEventListener("change",renderServ);
-$("#b_serv").addEventListener("change",()=>{const v=servicios.find(x=>x.nombre===$("#b_serv").value);$("#b_sdesc").textContent=v&&v.descripcion?v.descripcion:""});
+$("#types").addEventListener("change",()=>{renderServ();renderExtras()});
+$("#b_extras").addEventListener("change",estimar);
+$("#b_serv").addEventListener("change",()=>{const v=servicios.find(x=>x.nombre===$("#b_serv").value);$("#b_sdesc").textContent=v&&v.descripcion?v.descripcion:"";estimar()});
 $("#b_date").addEventListener("change",renderTimes);
 applyLang();
 
 function cargarOcupado(){return getDocs(collection(db,"ocupado")).then(snap=>{ocupado={};snap.docs.forEach(d=>ocupado[d.id]=d.data());renderTimes()}).catch(()=>{})}
 cargarOcupado();
 getDocs(collection(db,"servicios")).then(snap=>{
-  servicios=snap.docs.map(d=>d.data()).filter(s=>s&&s.nombre&&!/discount|example|assessment/i.test(s.nombre)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  renderServ();
+  servicios=snap.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(s=>s&&s.nombre&&!/discount|example|assessment/i.test(s.nombre)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  renderServ();renderExtras();
 }).catch(()=>{});
 
 $("#bk").addEventListener("submit",async e=>{
@@ -198,8 +223,11 @@ $("#bk").addEventListener("submit",async e=>{
     nombre:$("#b_name").value.trim(),telefono:$("#b_tel").value.trim(),email:$("#b_mail").value.trim(),
     direccion:$("#b_dir").value.trim(),tipo,vehiculo:$("#b_veh").value.trim(),
     servicio:serv==="__otro"?(lang==="es"?"No sabe / otro":"Not sure / other"):serv,
-    fecha:$("#b_date").value,hora,notas:$("#b_notes").value.trim(),idioma:lang,estado:"nueva",creado:Date.now()
+    fecha:$("#b_date").value,hora,notas:"",idioma:lang,estado:"nueva",creado:Date.now()
   };
+  const xs=[...document.querySelectorAll('#b_extras input:checked')].map(i=>i.value);
+  const xl=xs.length?"Extras: "+xs.join("; "):"";
+  d.notas=(xl+(xl&&$("#b_notes").value.trim()?"\n":"")+$("#b_notes").value.trim()).slice(0,900);
   if(!serv)return err.textContent=t.e_serv;
   if(!d.fecha)return err.textContent=t.e_date;
   if(!d.hora)return err.textContent=t.e_time;
@@ -211,9 +239,9 @@ $("#bk").addEventListener("submit",async e=>{
   const btn=$("#send");btn.disabled=true;btn.textContent=t.sending;
   try{
     await addDoc(collection(db,"solicitudes"),d);
-    try{await fetch(NTFY,{method:"POST",body:"Nueva solicitud: "+d.servicio+" - "+d.fecha+" "+d.hora+" ("+d.tipo+"). Abre tu app para verla.",headers:{"Title":"AutoLuxuries: nueva cita","Tags":"car","Priority":"high","Click":APP_URL}})}catch(_){}
+    try{await fetch(NTFY,{method:"POST",body:"Nueva solicitud: "+d.servicio+(xs.length?" + "+xs.length+" extra"+(xs.length>1?"s":""):"")+" - "+d.fecha+" "+d.hora+" ("+d.tipo+"). Abre tu app para verla.",headers:{"Title":"AutoLuxuries: nueva cita","Tags":"car","Priority":"high","Click":APP_URL}})}catch(_){}
     $("#bk").classList.add("hidden");$("#done").classList.remove("hidden");
-    $("#sum").textContent=d.servicio+" · "+d.fecha+" · "+fmt12(parseInt(d.hora));
+    $("#sum").textContent=d.servicio+(xs.length?" + "+xs.length+" extra"+(xs.length>1?"s":""):"")+" · "+d.fecha+" · "+fmt12(parseInt(d.hora));
     window.scrollTo(0,0);
   }catch(x){err.textContent=t.e_send;btn.disabled=false;btn.textContent=t.send}
 });
