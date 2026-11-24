@@ -12,6 +12,10 @@ service cloud.firestore {
     match /servicios/{id} {
       allow read: if true;
     }
+    // La página de progreso: el cliente puede ver SOLO su servicio con su enlace (no puede listar ni cambiar nada)
+    match /progreso/{id} {
+      allow get: if true;
+    }
     // La página para agendar puede ver qué horas están ocupadas (sin datos de clientes)
     match /ocupado/{id} {
       allow read: if true;

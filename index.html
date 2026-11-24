@@ -695,10 +695,22 @@ async function submitTiempo(f){const id=f.id.value,c=byId("citas",id);if(!c)retu
   if(num(f.horas.value)>0)ms=Math.round(num(f.horas.value)*3600000);
   else{ms=tmMs(f);if(ms==null)return toast("Pon la hora de inicio y de fin, o el total de horas.");const d=c.fecha||today();ini=new Date(d+"T"+f.ini.value+":00").getTime();fin=new Date(d+"T"+f.fin.value+":00").getTime();if(fin<ini)fin+=864e5}
   await timerSet(id,t=>{t.acum=ms;t.inicio=null;if(ini){t.empezo=ini;t.terminado=fin;t.sesiones=[{ini,fin}]}});toast("Tiempo guardado: "+hTxt(ms));verCita(id)}
+// progreso en vivo para el cliente
+const PROG_URL=location.origin+location.pathname.replace(/[^/]*$/,"")+"progreso.html";
+const PASOS=[[0,"Comenzando"],[25,"25%"],[50,"50%"],[75,"75%"],[100,"Listo 100%"]];
+function progId(c){if(c.progresoId)return c.progresoId;const pid=(crypto.randomUUID?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(36)+Math.random().toString(36).slice(2))).slice(0,22);
+  c.progresoId=pid;mergeCita(c.id,{progresoId:pid});publicarProg(c,c.progresoPct,c.progresoHist||{});return pid}
+function progUrl(c,lang){return PROG_URL+"?id="+progId(c)+"&lang="+lang}
+function publicarProg(c,pct,hist){const cli=byId("clientes",c.clienteId)||{};save("progreso",{id:c.progresoId,nombre:(cli.nombre||"").split(" ")[0],vehiculo:c.vehiculo||"",servicio:c.servicio||"",pct:typeof pct==="number"?pct:null,hist:hist||{}})}
+function setProgreso(id,pct){const c=byId("citas",id);if(!c)return;progId(c);const hist={};Object.entries(c.progresoHist||{}).forEach(([k,v])=>{if(num(k)<pct)hist[k]=v});hist[pct]=Date.now();
+  c.progresoPct=pct;c.progresoHist=hist;mergeCita(id,{progresoPct:pct,progresoHist:hist,progresoId:c.progresoId});publicarProg(c,pct,hist)}
+function mergeCita(id,campos){setDoc(fsDoc(fs,"citas",id),JSON.parse(JSON.stringify(Object.assign({},campos,{actualizado:Date.now()}))),{merge:true}).catch(handleErr)}
+function seccionProgreso(c){if(c.estado==="cancelada")return "";const cur=typeof c.progresoPct==="number"?c.progresoPct:-1;
+  return '<div class="section"><h2>Progreso para el cliente</h2><p class="note" style="margin:0">El cliente lo ve en vivo con el enlace del mensaje "Ya llegué". Toca la etapa en la que vas.</p><div class="btns" style="margin:0">'+PASOS.map(([p,l])=>'<button type="button" class="btn sm'+(p===cur?" pri":"")+'" data-act="prog" data-id="'+c.id+'|'+p+'"'+(p===cur?' aria-pressed="true"':"")+'>'+(p<=cur?"✓ ":"")+l+'</button>').join("")+'</div><div class="btns" style="margin:0"><button type="button" class="btn sm" data-act="progLink" data-id="'+c.id+'">Copiar enlace</button>'+(c.progresoId?'<a class="btn sm" href="'+PROG_URL+'?id='+c.progresoId+'&lang=es" target="_blank" rel="noopener">Ver como el cliente ↗</a>':"")+'</div></div>'}
 // mensajes de llegada y de trabajo terminado
 function msgLlegue(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];
-  if(lang==="es")return "Hola "+first+", le saluda "+n.nombre+". Ya estoy aquí afuera, listo para empezar. Cuando guste, puede salir y comenzamos. ¡Gracias!";
-  return "Hi "+first+", this is "+n.nombre+". I'm here and parked outside, ready to get started. Come on out whenever you're ready. Thank you!"}
+  if(lang==="es")return "Hola "+first+", le saluda "+n.nombre+". Ya estoy aquí afuera, listo para empezar. Cuando guste, puede salir y comenzamos. ¡Gracias!\n\nPuede ver el avance de su servicio en vivo aquí:\n"+progUrl(c,"es");
+  return "Hi "+first+", this is "+n.nombre+". I'm here and parked outside, ready to get started. Come on out whenever you're ready. Thank you!\n\nYou can follow your service progress live here:\n"+progUrl(c,"en")}
 function msgTermine(c,lang){const n=negocio(),cli=byId("clientes",c.clienteId)||{},first=(cli.nombre||"").split(" ")[0];const varios=itemsOf(c).length>1;
   const debe=c.usaMembresia?0:Math.max(0,num(c.precio)-pagadoCita(c.id));
   if(lang==="es")return "Hola "+first+", ¡"+(varios?"sus vehículos están listos":"su vehículo está listo")+"! Cuando guste, puede salir y le entrego las llaves para que "+(varios?"los":"lo")+" revise con calma."+(debe?" El total es de "+money(debe)+".":"")+"\n\n"+n.nombre;
@@ -1065,6 +1077,7 @@ function verCita(id){
   if(pagos.length)b+='<div class="section"><h2>Pagos</h2><div class="kv">'+pagos.map(p=>'<div><span>'+esc(fDate(p.fecha))+' · '+esc(p.metodo)+'</span><span>'+money(p.monto)+(num(p.propina)?'<br><small style="color:var(--ok)">+ '+money(p.propina)+' propina</small>':"")+'</span></div>').join("")+'</div></div>';
   let acts='';
   if(c.estado==="completada")acts+='<button type="button" class="btn" data-act="resenaEn" data-id="'+id+'">Pedir reseña (English)</button><button type="button" class="btn" data-act="resenaEs" data-id="'+id+'">Pedir reseña (Español)</button>'+(c.resenaPedida?'<span class="pill p-ok" style="align-self:center">Reseña pedida '+esc(fDate(c.resenaPedida,{day:"numeric",month:"short"}))+'</span>':"");
+  b+=seccionProgreso(c);
   if(c.estado!=="cancelada")b+='<div class="section"><h2>Mensajes al cliente</h2><div class="btns" style="margin:0">'+(c.estado==="programada"?'<button type="button" class="btn" data-act="llegueEn" data-id="'+id+'">📍 Ya llegué (English)</button><button type="button" class="btn" data-act="llegueEs" data-id="'+id+'">📍 Ya llegué (Español)</button>':"")+'<button type="button" class="btn" data-act="termineEn" data-id="'+id+'">✅ Ya terminé (English)</button><button type="button" class="btn" data-act="termineEs" data-id="'+id+'">✅ Ya terminé (Español)</button>'+(esTela(c)?'<button type="button" class="btn" data-act="telaOkEn" data-id="'+id+'">🛡 Acepta condiciones de tela (English)</button><button type="button" class="btn" data-act="telaOkEs" data-id="'+id+'">🛡 Acepta condiciones de tela (Español)</button><button type="button" class="btn" data-act="telaCuidEn" data-id="'+id+'">🧴 Cuidado de la tela (English)</button><button type="button" class="btn" data-act="telaCuidEs" data-id="'+id+'">🧴 Cuidado de la tela (Español)</button>':"")+'</div></div>';
   if(c.estado==="programada")acts+='<button type="button" class="btn" data-act="confCitaEn" data-id="'+id+'">Copiar confirmación (English)</button><button type="button" class="btn" data-act="confCitaEs" data-id="'+id+'">Copiar confirmación (Español)</button>';
   if(c.estado==="programada")acts+='<button type="button" class="btn dark" data-act="completar" data-id="'+id+'">Marcar completada</button><button type="button" class="btn danger" data-act="cancelarCita" data-id="'+id+'">Cancelar cita</button>';
@@ -1300,12 +1313,14 @@ const ACT={
   citaF:id=>{citaFiltro=id;render()}, pagoMes:id=>{pagoMes=id;render()},
   tIni:async id=>{const otro=corriendo().find(c=>c.id!==id);if(otro&&!(await askConfirm("Ya tienes corriendo el tiempo de "+cliNombre(otro.clienteId)+". ¿Lo pausamos y empezamos este?","Sí, cambiar")))return;
     if(otro)await timerSet(otro.id,t=>{t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});
-    await timerSet(id,t=>{t.inicio=Date.now();if(!t.empezo)t.empezo=t.inicio;delete t.terminado});toast("Empezaste a las "+horaTxt(Date.now()));verCita(id)},
+    await timerSet(id,t=>{t.inicio=Date.now();if(!t.empezo)t.empezo=t.inicio;delete t.terminado});{const cc=byId("citas",id);if(cc&&typeof cc.progresoPct!=="number")setProgreso(id,0)}toast("Empezaste a las "+horaTxt(Date.now()));verCita(id)},
   tPausa:async id=>{await timerSet(id,t=>{if(!t.inicio)return;t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null});toast("En pausa");verCita(id)},
-  tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});
-    const tot=tTotal(n);toast("Te corresponden "+money(tot/3600000*pagoHora())+" por "+hTxt(tot));if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+" — te corresponden "+money(tot/3600000*pagoHora())+" (de "+horaTxt(n.timer.empezo||(n.timer.sesiones[0]||{}).ini)+" a "+horaTxt(n.timer.terminado)+"). ¿Marcar la cita como completada?","Sí, completada")){await save("citas",Object.assign({},n,{estado:"completada"}));toast("Cita completada")}verCita(id)},
+  tFin:async id=>{const n=await timerSet(id,t=>{if(t.inicio){t.acum=num(t.acum)+(Date.now()-num(t.inicio));t.sesiones=(t.sesiones||[]).concat([{ini:t.inicio,fin:Date.now()}]);t.inicio=null}t.terminado=Date.now()});setProgreso(id,100);
+    const tot=tTotal(n);toast("Te corresponden "+money(tot/3600000*pagoHora())+" por "+hTxt(tot));if(n.estado==="programada"&&await askConfirm("Trabajaste "+hTxt(tot)+" — te corresponden "+money(tot/3600000*pagoHora())+" (de "+horaTxt(n.timer.empezo||(n.timer.sesiones[0]||{}).ini)+" a "+horaTxt(n.timer.terminado)+"). ¿Marcar la cita como completada?","Sí, completada")){const cur=byId("citas",id)||n;cur.estado="completada";mergeCita(id,{estado:"completada"});toast("Cita completada")}verCita(id)},
   tEditar:id=>formTiempo(id),
   telaOkEn:()=>copyText(msgConsentTela("en")),telaOkEs:()=>copyText(msgConsentTela("es")),telaCuidEn:()=>copyText(msgCuidadoTela("en")),telaCuidEs:()=>copyText(msgCuidadoTela("es")),
+  prog:v=>{const [id,p]=v.split("|");setProgreso(id,num(p));toast(num(p)===100?"El cliente ya ve: ¡Listo!":"El cliente ya ve: "+(num(p)?p+"%":"Comenzando"));verCita(id)},
+  progLink:id=>{const c=byId("citas",id);const cli=byId("clientes",c.clienteId)||{};copyText(progUrl(c,"en"))},
   llegueEn:id=>copyText(msgLlegue(byId("citas",id),"en")),llegueEs:id=>copyText(msgLlegue(byId("citas",id),"es")),
   termineEn:id=>copyText(msgTermine(byId("citas",id),"en")),termineEs:id=>copyText(msgTermine(byId("citas",id),"es")),
   cancelarCita:id=>formCancelar(id),
