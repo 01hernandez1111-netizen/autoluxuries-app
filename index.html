@@ -882,7 +882,7 @@ function formSolCancel(id){const x=byId("solicitudes",id);if(!x)return;const ya=
 async function submitSolCancel(f){const o=fd(f),x=byId("solicitudes",o.id);if(!x)return;let c=clientePorTel(x.telefono);
   const nota="Pidió cita por la página para el "+fDate(x.fecha,{day:"numeric",month:"short",year:"numeric"})+" ("+(x.servicio||"servicio")+") y no se agendó: "+o.motivo+(o.nota?" — "+o.nota:"")+".";
   if(c){await save("clientes",Object.assign({},c,{notas:(c.notas?c.notas+"\n":"")+nota}))}
-  else if(f.guardar&&f.guardar.checked){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:nota,prospecto:true,canceloEn:today(),creado:today()});c={id:cid}}
+  else if(f.guardar&&f.guardar.checked){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:nota,prospecto:true,canceloEn:today(),origen:"Página web",creado:today()});c={id:cid}}
   await save("solicitudes",Object.assign({},x,{estado:"rechazada",motivoCancel:o.motivo,notaCancel:o.nota||"",clienteId:c?c.id:""}));closeSheet();toast(c?"Guardado. El cliente quedó en tu lista.":"Solicitud guardada como no agendada")}
 // --- guía de servicios ---
 const CASO="Se cotiza según el caso";
@@ -1091,10 +1091,11 @@ function fd(form){const o={};new FormData(form).forEach((v,k)=>o[k]=typeof v==="
 
 // --- cliente ---
 function vehRow(v){v=v||{};return '<div class="vehrow"><select name="vtipo" aria-label="Tipo">'+opt(TIPOS,v.tipo||"Auto")+'</select><input name="vdesc" placeholder="Año, marca, modelo, color" value="'+esc(v.desc)+'" aria-label="Vehículo"><button type="button" class="del" data-act="delRow" aria-label="Quitar">×</button></div>'}
+const ORIGENES=["","Página web","Referido","Google","Instagram / Facebook","Thumbtack","Campaña","Cliente de antes","Otro"];
 function formCliente(id){
   const c=id?byId("clientes",id):{};
   openSheet(id?"Editar cliente":"Nuevo cliente",
-   '<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="c_nom">Nombre</label><input id="c_nom" name="nombre" required value="'+esc(c.nombre)+'"></div><div class="g2"><div class="f"><label for="c_tel">Teléfono</label><input id="c_tel" name="telefono" type="tel" value="'+esc(c.telefono)+'"></div><div class="f"><label for="c_em">Email</label><input id="c_em" name="email" type="email" value="'+esc(c.email)+'"></div></div><div class="f"><label for="c_dir">Dirección</label><input id="c_dir" name="direccion" value="'+esc(c.direccion)+'"></div><div class="f"><label>Vehículos, botes o RV</label><div id="vehs" style="display:flex;flex-direction:column;gap:6px">'+((c.vehiculos&&c.vehiculos.length?c.vehiculos:[{}]).map(vehRow).join(""))+'</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="addVeh">+ Otro vehículo</button></div><div class="f"><label for="c_not">Notas</label><textarea id="c_not" name="notas" placeholder="Código de la puerta, preferencias, cómo te conoció…">'+esc(c.notas)+'</textarea></div>',
+   '<input type="hidden" name="id" value="'+esc(id||"")+'"><div class="f"><label for="c_nom">Nombre</label><input id="c_nom" name="nombre" required value="'+esc(c.nombre)+'"></div><div class="g2"><div class="f"><label for="c_tel">Teléfono</label><input id="c_tel" name="telefono" type="tel" value="'+esc(c.telefono)+'"></div><div class="f"><label for="c_em">Email</label><input id="c_em" name="email" type="email" value="'+esc(c.email)+'"></div></div><div class="f"><label for="c_org">Cómo nos conoció</label><select id="c_org" name="origen">'+opt(ORIGENES.map(x=>[x,x||"Sin dato"]),c.origen||"")+'</select></div><div class="f"><label for="c_dir">Dirección</label><input id="c_dir" name="direccion" value="'+esc(c.direccion)+'"></div><div class="f"><label>Vehículos, botes o RV</label><div id="vehs" style="display:flex;flex-direction:column;gap:6px">'+((c.vehiculos&&c.vehiculos.length?c.vehiculos:[{}]).map(vehRow).join(""))+'</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="addVeh">+ Otro vehículo</button></div><div class="f"><label for="c_not">Notas</label><textarea id="c_not" name="notas" placeholder="Código de la puerta, preferencias, cómo te conoció…">'+esc(c.notas)+'</textarea></div>',
    '<button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn pri">Guardar cliente</button>',"cliente");
 }
 async function submitCliente(f){
@@ -1102,7 +1103,7 @@ async function submitCliente(f){
   const tipos=[...f.querySelectorAll('[name="vtipo"]')].map(x=>x.value), descs=[...f.querySelectorAll('[name="vdesc"]')].map(x=>x.value.trim());
   const vehiculos=descs.map((d,i)=>({tipo:tipos[i],desc:d})).filter(v=>v.desc);
   const prev=o.id?byId("clientes",o.id):{};
-  const rec={id:o.id||undefined,nombre:o.nombre,telefono:o.telefono,email:o.email,direccion:o.direccion,notas:o.notas,vehiculos,creado:(prev&&prev.creado)||today()};
+  const rec={id:o.id||undefined,nombre:o.nombre,telefono:o.telefono,email:o.email,direccion:o.direccion,notas:o.notas,origen:o.origen||"",vehiculos,creado:(prev&&prev.creado)||today()};
   try{const nid=await save("clientes",o.id&&prev?Object.assign({},prev,rec):rec);closeSheet();toast("Cliente guardado");verCliente(nid)}catch(e){}
 }
 function verCliente(id){
@@ -1398,7 +1399,7 @@ function verSol(id){
 async function solAceptar(id){
   const x=byId("solicitudes",id);if(!x)return;
   let c=clientePorTel(x.telefono);
-  if(!c){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:"Llegó por la página para agendar.",creado:today()});c={id:cid,direccion:x.direccion}}
+  if(!c){const cid=await save("clientes",{nombre:x.nombre,telefono:x.telefono,email:x.email||"",direccion:x.direccion||"",vehiculos:x.vehiculo?[{tipo:x.tipo||"Auto",desc:x.vehiculo}]:[],notas:"Llegó por la página para agendar.",origen:"Página web",creado:today()});c={id:cid,direccion:x.direccion}}
   const sv=S.servicios.find(v=>v.nombre===x.servicio);
   closeSheet();
   const m=/^Extras: (.*)$/m.exec(x.notas||"");const extras=m?m[1].split("; ").filter(Boolean):[];
