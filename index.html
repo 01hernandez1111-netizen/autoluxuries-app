@@ -141,6 +141,33 @@ nav.tabs button.on{color:var(--gold-ink)}
 .guia h4{margin:14px 0 6px;font-size:14px}
 a.btn{text-decoration:none;color:var(--ink)}
 a.btn.dark,a.btn.pri{color:#fff}
+.hero-who{margin:0 2px -6px;font-size:15px;color:var(--muted)}
+.hero-who b{color:var(--ink)}
+.hero-card{background:var(--ink);color:#fff;border-radius:20px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:6px}
+.hero-card.hero-done{background:var(--ok)}
+.hero-k{font-size:13px;opacity:.65}
+.hero-t{font-family:var(--display);font-stretch:110%;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.hero-h{margin:0;font-size:15px;opacity:.85;line-height:1.4}
+.hero-clock{font-family:var(--display);font-stretch:112%;font-size:44px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em;opacity:1;color:#7ee2a8}
+.hero-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.hero-btns .btn{flex:1 1 140px;min-height:46px;border-radius:12px}
+.hero-pri{background:#fff!important;color:var(--ink)!important;border-color:#fff!important}
+.hero-sec{background:transparent!important;color:#fff!important;border-color:rgba(255,255,255,.35)!important}
+.hero-skip{flex-basis:100%;color:rgba(255,255,255,.7);background:none;border:0;font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:6px 0 0;cursor:pointer;text-align:left}
+.hero-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;flex-basis:100%}
+.hero-step{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:10px;padding:9px 2px;font-size:12px;font-weight:600;cursor:pointer}
+.hero-step.done{opacity:.6}
+.hero-step.on{background:#fff;color:var(--ink);border-color:#fff;opacity:1}
+.hero-track{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
+.hero-track span{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--fill);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.hero-track span.ok{background:var(--ok-bg);color:var(--ok);box-shadow:none}
+.hero-track span.cur{background:var(--ink);color:#fff;box-shadow:none;font-weight:600}
+details.todo{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card)}
+details.todo>summary{list-style:none;cursor:pointer;padding:15px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+details.todo>summary::-webkit-details-marker{display:none}
+details.todo>summary::after{content:"⌄";color:var(--muted);font-size:18px;transition:transform .2s}
+details.todo[open]>summary::after{transform:rotate(180deg)}
+.todo-in{padding:0 14px 16px;display:flex;flex-direction:column;gap:16px}
 .guia .kv span:last-child{white-space:nowrap;padding-left:10px}
 .guia ul{margin:0;padding-left:20px;line-height:1.6}
 .timer{display:flex;align-items:baseline;gap:12px;padding:6px 0}
@@ -704,6 +731,7 @@ async function submitTiempo(f){const id=f.id.value,c=byId("citas",id);if(!c)retu
 // progreso en vivo para el cliente
 const PROG_URL=location.origin+location.pathname.replace(/[^/]*$/,"")+"progreso.html";
 const PASOS=[[0,"Comenzando"],[25,"25%"],[50,"50%"],[75,"75%"],[100,"Listo 100%"]];
+const PASOS_C=[[0,"Inicio"],[25,"25%"],[50,"50%"],[75,"75%"],[100,"100%"]];
 function progId(c){if(c.progresoId)return c.progresoId;const pid=(crypto.randomUUID?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(36)+Math.random().toString(36).slice(2))).slice(0,22);
   c.progresoId=pid;mergeCita(c.id,{progresoId:pid});publicarProg(c,c.progresoPct,c.progresoHist||{});return pid}
 function progUrl(c,lang){return PROG_URL+"?id="+progId(c)+"&lang="+lang}
@@ -1167,12 +1195,49 @@ function msgConfirmCita(c,lang){
   const pr=c.usaMembresia?"Included in your membership":(num(c.descuento)?money(c.precioBase)+" − discount "+descTxt(c)+" = "+money(c.precio):money(c.precio));
   return "Hi "+first+", your appointment with "+n.nombre+" is confirmed for "+fe+(h?" at "+h:"")+".\n"+(itemsOf(c).length>1?itemsTxt(c,"en"):"Service: "+(c.servicio||"Detail")+veh)+(c.direccion?"\nAddress: "+c.direccion:"")+"\nPrice: "+pr+"\n\n"+inclLinea(itemsOf(c).map(x=>x.servicio),"en")+"\n\nIf you need to reschedule, please let us know at least 24 hours in advance.\n\nThank you!"+(n.telefono?"\n"+n.telefono:"");
 }
+// --- paso a paso de cada cita ---
+function marcarPaso(id,k,rer){const c=byId("citas",id);if(!c)return;const ps=Object.assign({},c.pasos||{});if(!ps[k]){ps[k]=Date.now();c.pasos=ps;mergeCita(id,{pasos:ps})}if(rer!==false)setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},250)}
+function pasosCita(c){const ps=c.pasos||{},t=today(),deps=depositoDe(c),dc=depAjustes(),tm=c.timer||{},emp=!!(tm.empezo||tm.inicio||(tm.sesiones||[]).length),comp=c.estado==="completada";
+  const debe=c.usaMembresia?0:Math.max(0,num(c.precio)-pagadoCita(c.id));const out=[];
+  out.push({k:"conf",n:"Confirmada",ok:!!(ps.conf||c.recordadoEn||ps.lleg||emp||comp)});
+  if(!c.usaMembresia&&(num(c.precio)>=dc.desde||c.depositoPedido||deps.length)){out.push({k:"dep",n:"Depósito",ok:!!(deps.length||ps.dep||comp||emp)});if(deps.length)out.push({k:"depok",n:"Depósito confirmado",ok:!!(ps.depok||comp||emp)})}
+  if(c.fecha>t)out.push({k:"rec",n:"Recordatorio",ok:!!(c.recordadoEn||ps.rec)});
+  out.push({k:"lleg",n:"Llegada",ok:!!(ps.lleg||emp||comp)});
+  out.push({k:"work",n:"Trabajo",ok:comp||!!tm.terminado});
+  out.push({k:"fin",n:"Avisar que terminé",ok:!!ps.fin});
+  if(!c.usaMembresia)out.push({k:"cobro",n:"Cobro",ok:comp&&debe<=0.005||(!!ps.cobro)});
+  out.push({k:"recibo",n:"Recibo",ok:!!ps.recibo});
+  out.push({k:"resena",n:"Reseña",ok:!!(c.resenaPedida||ps.resena)});
+  return out}
+function heroPaso(c){if(c.estado==="cancelada")return "";const L=pasosCita(c),cur=L.find(x=>!x.ok),id=c.id;
+  const B=(act,txt,dark)=>'<button type="button" class="btn'+(dark?" hero-pri":" hero-sec")+'" data-act="'+act+'" data-id="'+id+'">'+txt+'</button>';
+  const saltar=k=>'<button type="button" class="lnk hero-skip" data-act="pasoSaltar" data-id="'+id+'|'+k+'">Saltar este paso</button>';
+  let t="",h="",bt="";const debe=c.usaMembresia?0:Math.max(0,num(c.precio)-pagadoCita(id)),tm=c.timer||{};
+  if(!cur){t="Todo listo con esta cita";h="Ya hiciste todos los pasos. ¡Buen trabajo!";}
+  else if(cur.k==="conf"){t="Confirma la cita";h="Mándale al cliente la fecha, la hora y lo que incluye su servicio.";bt=B("confCitaEn","Confirmación (English)",1)+B("confCitaEs","Confirmación (Español)",1)+saltar("conf")}
+  else if(cur.k==="dep"){if(!c.depositoPedido){t="Pide el depósito";h="Esta cita es de "+money(c.precio)+". Pide "+money(num(c.depositoMonto)||depAjustes().monto)+" para apartar el lugar.";bt=B("depPedirEn","Pedir depósito (English)",1)+B("depPedirEs","Pedir depósito (Español)",1)+B("depRecibido","Ya lo recibí")+saltar("dep")}
+    else{t="Espera el depósito";h="Lo pediste el "+fDate(c.depositoPedido,{day:"numeric",month:"long"})+". Cuando te llegue, márcalo aquí.";bt=B("depRecibido","Depósito recibido",1)+B("depPedirEn","Volver a pedir (EN)")+B("depPedirEs","Volver a pedir (ES)")+saltar("dep")}}
+  else if(cur.k==="depok"){t="Confirma que recibiste el depósito";h="Así el cliente sabe que su lugar está apartado.";bt=B("depOkEn","Confirmar depósito (English)",1)+B("depOkEs","Confirmar depósito (Español)",1)+saltar("depok")}
+  else if(cur.k==="rec"){const man=c.fecha===addDays(today(),1);t="Manda el recordatorio";h=man?"La cita es mañana.":"La cita es el "+fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"})+". Lo ideal es mandarlo un día antes.";bt=B("recEn","Recordatorio (English)",1)+B("recEs","Recordatorio (Español)",1)+saltar("rec")}
+  else if(cur.k==="lleg"){t="Avisa que ya llegaste";h="El mensaje lleva el enlace para que el cliente vea el avance en vivo.";bt=B("llegueEn","Ya llegué (English)",1)+B("llegueEs","Ya llegué (Español)",1)+saltar("lleg")}
+  else if(cur.k==="work"){const on=!!tm.inicio,tot=tTotal(c),pc=typeof c.progresoPct==="number"?c.progresoPct:-1;
+    if(!tot&&!on){t="Empieza el trabajo";h="Toca Empezar para tomar el tiempo. El cliente verá que ya comenzaste.";bt=B("tIni","▶ Empezar",1)+B("completar","Marcar completada sin tiempo")}
+    else{t=on?"Trabajando":"En pausa";h='<span class="hero-clock" data-timer="'+id+'">'+hms(tot)+'</span>';
+      bt='<div class="hero-steps">'+PASOS_C.map(([p,l])=>'<button type="button" class="hero-step'+(p===pc?" on":"")+(p<pc?" done":"")+'" data-act="prog" data-id="'+id+'|'+p+'">'+(p<=pc?"✓ ":"")+l+'</button>').join("")+'</div>'+(on?B("tPausa","⏸ Pausar"):B("tIni","▶ Seguir"))+B("tFin","⏹ Terminar",1)}}
+  else if(cur.k==="fin"){t="Avisa que ya terminaste";h="Le dices que salga a revisar y le entregas las llaves.";bt=B("termineEn","Ya terminé (English)",1)+B("termineEs","Ya terminé (Español)",1)+saltar("fin")}
+  else if(cur.k==="cobro"){t="Cobra el servicio";h=debe>0?"Falta cobrar "+money(debe)+".":"Marca la cita como completada.";bt=(debe>0?B("pagoCita","Registrar pago",1)+B("copiarCobro","Mensaje de cobro"):"")+(c.estado!=="completada"?B("completar","Marcar completada"):"")+saltar("cobro")}
+  else if(cur.k==="recibo"){t="Manda el recibo";h="El cliente recibe un PDF con los servicios, lo que pagó y la propina.";bt=B("reciboEn","Recibo PDF (English)",1)+B("reciboEs","Recibo PDF (Español)",1)+saltar("recibo")}
+  else if(cur.k==="resena"){t="Pide la reseña";h="Incluye la invitación a tus membresías.";bt=B("resenaEn","Pedir reseña (English)",1)+B("resenaEs","Pedir reseña (Español)",1)+saltar("resena")}
+  const prog='<div class="hero-track">'+L.map(x=>'<span class="'+(x.ok?"ok":x===cur?"cur":"")+'">'+(x.ok?"✓ ":"")+x.n+'</span>').join("")+'</div>';
+  return '<div class="hero-card'+(cur?"":" hero-done")+'"><span class="hero-k">'+(cur?"Siguiente paso":"Completado")+'</span><b class="hero-t">'+t+'</b><p class="hero-h">'+h+'</p>'+(bt?'<div class="hero-btns">'+bt+'</div>':"")+'</div>'+prog}
 function verCita(id){
   const c=byId("citas",id); if(!c)return closeSheet();
   const cli=byId("clientes",c.clienteId)||{}, pag=pagadoCita(id), saldo=saldoCita(c);
   const pagos=S.pagos.filter(p=>p.citaId===id);
   let b='<div class="kv"><div><span>Cliente</span><span>'+esc(cli.nombre||"—")+'</span></div>'+(cli.telefono?'<div><span>Teléfono</span><span><a class="tel" href="tel:'+esc(cli.telefono.replace(/[^0-9+]/g,""))+'">'+esc(cli.telefono)+'</a></span></div>':"")+'<div><span>Fecha</span><span>'+esc(fDate(c.fecha,{weekday:"long",day:"numeric",month:"long"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</span></div>'+(itemsOf(c).length>1?itemsOf(c).map((x,i)=>'<div><span>Vehículo '+(i+1)+'</span><span style="text-align:right">'+esc(x.vehiculo||x.tipo||"—")+'<br><small style="color:var(--muted)">'+esc(x.servicio||"—")+' · '+money(x.precio)+'</small></span></div>').join(""):'<div><span>Servicio</span><span>'+esc(c.servicio||"—")+'</span></div><div><span>'+esc(c.tipo||"Vehículo")+'</span><span>'+esc(c.vehiculo||"—")+'</span></div>')+(c.direccion?'<div><span>Dirección</span><span>'+mapLink(c.direccion)+'</span></div>':"")+'<div><span>Precio</span><span>'+(c.usaMembresia?"Membresía":money(num(c.descuento)?c.precioBase:c.precio))+'</span></div>'+(num(c.descuento)&&!c.usaMembresia?'<div><span>Descuento</span><span>-'+esc(descTxt(c))+'</span></div><div><span>Total</span><span>'+money(c.precio)+'</span></div>':"")+'<div><span>Pagado</span><span>'+money(pag)+'</span></div>'+(c.estado==="completada"?'<div><span>Debe</span><span style="color:'+(saldo>0?"var(--warn)":"var(--ok)")+'">'+money(saldo)+'</span></div>':"")+'</div>';
-  if(c.notas)b+='<p style="margin:0;white-space:pre-wrap">'+esc(c.notas)+'</p>';
+  if(c.notas)b+='<p class="note" style="margin:0;white-space:pre-wrap;color:var(--ink)"><b>Notas:</b> '+esc(c.notas)+'</p>';
+  const hero=heroPaso(c);
+  if(hero){b='<p class="hero-who"><b>'+esc(cli.nombre||"Cliente")+'</b> · '+esc(fDate(c.fecha,{weekday:"short",day:"numeric",month:"short"}))+(c.hora?", "+esc(fHora(c.hora)):"")+'</p>'+hero+b;b+='<details class="todo"><summary>Todos los botones y secciones</summary><div class="todo-in">'}
   b+=itemsOf(c).map(x=>servInfo(x.servicio)).join("");
   if(itemsOf(c).some(x=>guiaDe(x.servicio)))b+='<div class="btns" style="margin-top:6px"><button type="button" class="btn sm" data-act="verGuia" data-id="'+id+'">Qué incluye y cargos extra</button></div>';
   b+=seccionTimer(c);
@@ -1193,6 +1258,7 @@ function verCita(id){
   if(saldo>0)acts+='<button type="button" class="btn" data-act="copiarCobro" data-id="'+id+'">Copiar mensaje de cobro</button><button type="button" class="btn pri" data-act="pagoCita" data-id="'+id+'">Registrar pago</button>';
   else if(c.estado==="programada"&&!c.usaMembresia)acts+='<button type="button" class="btn" data-act="pagoCita" data-id="'+id+'">Registrar depósito</button>';
   b+='<div class="btns">'+acts+'</div>';
+  if(hero)b+='</div></details>';
   openSheet("Cita",b,'<button type="button" class="btn danger" data-act="delCita" data-id="'+id+'">Borrar</button><button type="button" class="btn" data-act="editCita" data-id="'+id+'">Editar</button>');
   cargarFotos(id);
 }
@@ -1207,7 +1273,7 @@ function formPago(pre){
 }
 async function submitPago(f){
   const o=fd(f); if(!o.clienteId)return toast("Elige un cliente."); if(!num(o.monto)&&!num(o.propina))return toast("Escribe el monto.");
-  try{const prevP=o.id?byId("pagos",o.id)||{}:{};await save("pagos",Object.assign({},prevP,{id:o.id||undefined,clienteId:o.clienteId,citaId:o.citaId,memId:o.memId,monto:num(o.monto),propina:num(o.propina),fecha:o.fecha||today(),metodo:o.metodo,concepto:o.concepto}));closeSheet();toast(num(o.propina)?"Pago y propina registrados":"Pago registrado")}catch(e){}
+  try{const prevP=o.id?byId("pagos",o.id)||{}:{};await save("pagos",Object.assign({},prevP,{id:o.id||undefined,clienteId:o.clienteId,citaId:o.citaId,memId:o.memId,monto:num(o.monto),propina:num(o.propina),fecha:o.fecha||today(),metodo:o.metodo,concepto:o.concepto}));closeSheet();toast(num(o.propina)?"Pago y propina registrados":"Pago registrado");if(o.citaId&&byId("citas",o.citaId))setTimeout(()=>verCita(o.citaId),150)}catch(e){}
 }
 function verPago(id){
   const p=byId("pagos",id); if(!p)return;
@@ -1431,25 +1497,26 @@ const ACT={
   telaOkEn:()=>copyText(msgConsentTela("en")),telaOkEs:()=>copyText(msgConsentTela("es")),telaCuidEn:()=>copyText(msgCuidadoTela("en")),telaCuidEs:()=>copyText(msgCuidadoTela("es")),
   prog:v=>{const [id,p]=v.split("|");setProgreso(id,num(p));toast(num(p)===100?"El cliente ya ve: ¡Listo!":"El cliente ya ve: "+(num(p)?p+"%":"Comenzando"));verCita(id)},
   progLink:id=>{const c=byId("citas",id);const cli=byId("clientes",c.clienteId)||{};copyText(progUrl(c,"en"))},
-  reciboEn:id=>mandarRecibo(id,"en"),reciboEs:id=>mandarRecibo(id,"es"),
+  reciboEn:id=>{marcarPaso(id,"recibo",false);mandarRecibo(id,"en")},reciboEs:id=>{marcarPaso(id,"recibo",false);mandarRecibo(id,"es")},
+  pasoSaltar:v=>{const [id,k]=v.split("|");marcarPaso(id,k)},
   newCampana:()=>formCampana(),editCampana:id=>formCampana(id),verCampana:id=>{CAMP=id;go("campana")},
   delCampana:async id=>{if(await askConfirm("¿Borrar esta campaña?")){removeDoc("campanas",id);closeSheet();go("campanas")}},
   cpEnviado:(v,el)=>{const [kid,cid]=v.split("|");const k=byId("campanas",kid);if(el&&el.getAttribute("href"))location.href=el.getAttribute("href");if(!k)return;const env=Object.assign({},k.enviados||{});env[cid]=today();k.enviados=env;setDoc(fsDoc(fs,"campanas",kid),{enviados:env,actualizado:Date.now()},{merge:true}).catch(handleErr);setTimeout(render,400)},
   noPromos:async id=>{const cl=byId("clientes",id);if(cl&&await askConfirm("¿Quitar a "+(cl.nombre||"este cliente")+" de todas tus campañas?","Sí, quitar")){setDoc(fsDoc(fs,"clientes",id),{noPromos:true},{merge:true}).catch(handleErr);cl.noPromos=true;render()}},
-  recEn:id=>{const c=byId("citas",id);copyText(msgRecordatorio(c,"en"));mergeCita(id,{recordadoEn:today()});c.recordadoEn=today()},
-  recEs:id=>{const c=byId("citas",id);copyText(msgRecordatorio(c,"es"));mergeCita(id,{recordadoEn:today()});c.recordadoEn=today()},
-  depPedirEn:id=>{const c=byId("citas",id);copyText(msgDeposito(c,"en"));if(!c.depositoPedido){mergeCita(id,{depositoPedido:today()});c.depositoPedido=today()}},
-  depPedirEs:id=>{const c=byId("citas",id);copyText(msgDeposito(c,"es"));if(!c.depositoPedido){mergeCita(id,{depositoPedido:today()});c.depositoPedido=today()}},
+  recEn:id=>{const c=byId("citas",id);copyText(msgRecordatorio(c,"en"));mergeCita(id,{recordadoEn:today()});c.recordadoEn=today();setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},250)},
+  recEs:id=>{const c=byId("citas",id);copyText(msgRecordatorio(c,"es"));mergeCita(id,{recordadoEn:today()});c.recordadoEn=today();setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},250)},
+  depPedirEn:id=>{const c=byId("citas",id);copyText(msgDeposito(c,"en"));if(!c.depositoPedido){mergeCita(id,{depositoPedido:today()});c.depositoPedido=today()};setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},250)},
+  depPedirEs:id=>{const c=byId("citas",id);copyText(msgDeposito(c,"es"));if(!c.depositoPedido){mergeCita(id,{depositoPedido:today()});c.depositoPedido=today()};setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},250)},
   depRecibido:id=>formDeposito(id),
-  depOkEn:id=>copyText(msgDepositoOk(byId("citas",id),"en")),depOkEs:id=>copyText(msgDepositoOk(byId("citas",id),"es")),
-  llegueEn:id=>copyText(msgLlegue(byId("citas",id),"en")),llegueEs:id=>copyText(msgLlegue(byId("citas",id),"es")),
-  termineEn:id=>copyText(msgTermine(byId("citas",id),"en")),termineEs:id=>copyText(msgTermine(byId("citas",id),"es")),
+  depOkEn:id=>{copyText(msgDepositoOk(byId("citas",id),"en"));marcarPaso(id,"depok")},depOkEs:id=>{copyText(msgDepositoOk(byId("citas",id),"es"));marcarPaso(id,"depok")},
+  llegueEn:id=>{copyText(msgLlegue(byId("citas",id),"en"));marcarPaso(id,"lleg")},llegueEs:id=>{copyText(msgLlegue(byId("citas",id),"es"));marcarPaso(id,"lleg")},
+  termineEn:id=>{copyText(msgTermine(byId("citas",id),"en"));marcarPaso(id,"fin")},termineEs:id=>{copyText(msgTermine(byId("citas",id),"es"));marcarPaso(id,"fin")},
   cancelarCita:id=>formCancelar(id),
   cancelMsgEn:id=>copyText(msgCancel(byId("citas",id),"en")),cancelMsgEs:id=>copyText(msgCancel(byId("citas",id),"es")),
   reactivar:async id=>{const c=byId("citas",id);if(await askConfirm("¿Volver a poner esta cita como programada?","Sí, reactivar")){const n=Object.assign({},c,{estado:"programada"});delete n.motivoCancel;delete n.notaCancel;delete n.canceladaEn;await save("citas",n);toast("Cita reactivada");verCita(id)}},
   verGuia:id=>{const c=byId("citas",id);verGuia(itemsOf(c).map(x=>x.servicio).join(" + "))},
   goGuia:()=>{closeSheet();go("guia")},
-  resenaEn:id=>pedirResena(id,"en"),resenaEs:id=>pedirResena(id,"es"),
+  resenaEn:id=>{pedirResena(id,"en");setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},300)},resenaEs:id=>{pedirResena(id,"es");setTimeout(()=>{if($("#modal").innerHTML)verCita(id)},300)},
   verVolver,
   volverCopiarEn:id=>{const cl=byId("clientes",id);copyText(msgVolver(cl,"en"));save("clientes",Object.assign({},cl,{avisadoEn:today()}))},
   volverCopiarEs:id=>{const cl=byId("clientes",id);copyText(msgVolver(cl,"es"));save("clientes",Object.assign({},cl,{avisadoEn:today()}))},
@@ -1476,8 +1543,8 @@ const ACT={
   delRow:(id,el)=>{const r=el.parentElement;const box=r.parentElement;if(box.children.length>1)r.remove();else r.querySelectorAll("input").forEach(i=>i.value="");estTot()},
   completar:async id=>{const c=byId("citas",id);const rec=Object.assign({},c,{estado:"completada"});try{await save("citas",rec);await contarMembresia(id,rec);toast("Cita completada");setTimeout(()=>verCita(id),50)}catch(e){}},
   copiarCobro:id=>copyText(mensajeCobro(byId("citas",id))),
-  confCitaEn:id=>copyText(msgConfirmCita(byId("citas",id),"en")),
-  confCitaEs:id=>copyText(msgConfirmCita(byId("citas",id),"es")),
+  confCitaEn:id=>{copyText(msgConfirmCita(byId("citas",id),"en"));marcarPaso(id,"conf")},
+  confCitaEs:id=>{copyText(msgConfirmCita(byId("citas",id),"es"));marcarPaso(id,"conf")},
   copiarEst:id=>copyText(textoEst(byId("estimaciones",id))),
   estEnviada:async id=>{try{await save("estimaciones",Object.assign({},byId("estimaciones",id),{estado:"enviada"}));setTimeout(()=>verEst(id),50)}catch(e){}},
   estACita:id=>{const e=byId("estimaciones",id);formCita(null,{clienteId:e.clienteId,tipo:e.tipo,vehiculo:e.vehiculo,servicio:(e.items||[]).map(i=>i.desc).join(" + "),precio:estTotal(e),estId:id,notas:e.notas})},
