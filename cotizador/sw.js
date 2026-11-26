@@ -1,6 +1,6 @@
 // Service worker de AutoLuxuries Cotizador: abre sin señal y se actualiza sola al abrirla con internet.
-const VERSION = "alc-v2";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./costos.js"];
+const VERSION = "alc-v3";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./costos.js", "./trabajos.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("alc-") && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));

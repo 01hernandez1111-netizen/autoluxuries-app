@@ -207,6 +207,20 @@ a.btn{text-decoration:none;color:inherit}
 .pbar small{font-size:12px;opacity:.7}
 .pbar b{font-family:var(--display);font-stretch:110%;font-size:18px;font-variant-numeric:tabular-nums}
 .pbar.ok span:last-child b{color:#7EE0A8}.pbar.bad span:last-child b{color:#FFB4A8}
+.jobs{margin-top:14px;padding:12px;border-radius:var(--r-md);background:var(--fill);display:flex;flex-direction:column;gap:8px}
+.jk{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.job{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.job.off{opacity:.55}
+.job .jt{display:flex;gap:10px;align-items:center;font-weight:650}
+.job .jt input{width:20px;height:20px}
+.job .jt small{font-weight:600;color:var(--info);font-size:12px}
+.job .jd{font-size:13px;color:var(--muted);margin-top:4px;padding-left:30px}
+.job .jin{display:flex;gap:10px;margin-top:8px;padding-left:30px;font-size:13px;color:var(--muted)}
+.job .jin label{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.job .jin input{width:68px;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--fill);text-align:right;font-size:16px}
+.job.sv{display:flex;flex-direction:column;gap:4px;font-weight:650}
+.job.sv small{font-weight:500;color:var(--muted);font-size:13px}
+.job.sv .chip{align-self:flex-start;margin-top:4px}
 .prow{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px}
 .prow input,.prow select{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--fill);font-size:16px}
 .prow>input{width:100%;font-weight:600}
@@ -226,6 +240,7 @@ main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { KITS, PRODUCTOS_DEF, HERRAMIENTAS_DEF, costoKit, herramientasPorTrabajo, costoMilla, costoProductos } from "./costos.js";
+import { TRABAJOS, detectar, palabrasClave, norm } from "./trabajos.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fbApp = initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
@@ -293,10 +308,14 @@ function base(sv){const k=sv.key,M=META[k]||{h:2,p:8,a:"ambos"},cf=CF().serv[k]|
 
 // ---------- cotización en curso ----------
 const NIVEL={ligera:.85,normal:1,sucia:1.25,muy:1.5};
-const nuevaW=()=>({id:uid(),nuevo:true,clienteId:"",nuevoNombre:"",nuevoTel:"",tipo:"Auto",vehiculo:"",ft:"",direccion:"",millas:"",insp:{int:"normal",ext:"normal",mascotas:"no",manchas:"no",moho:"no",olor:false,pintura:"buena"},quiere:"",necesita:"",items:[],extraH:"",extraP:"",precioFinal:"",notas:""});
-let W=null;try{W=JSON.parse(localStorage.getItem("cot_borrador")||"null")}catch(e){}if(!W||!W.insp)W=nuevaW();
+const nuevaW=()=>({id:uid(),nuevo:true,clienteId:"",nuevoNombre:"",nuevoTel:"",tipo:"Auto",vehiculo:"",ft:"",direccion:"",millas:"",insp:{int:"normal",ext:"normal",mascotas:"no",manchas:"no",moho:"no",olor:false,pintura:"buena"},quiere:"",necesita:"",items:[],extraH:"",extraP:"",extraNombre:"",jobs:{},precioFinal:"",notas:""});
+let W=null;try{W=JSON.parse(localStorage.getItem("cot_borrador")||"null")}catch(e){}if(!W||!W.insp)W=nuevaW();if(!W.jobs)W.jobs={};
 function guardarBorrador(){try{localStorage.setItem("cot_borrador",JSON.stringify(W))}catch(e){}}
 
+const misTrabajos=()=>(S.cot&&Array.isArray(S.cot.misTrabajos))?S.cot.misTrabajos:[];
+function detectados(w){w=w||W;return detectar((w.quiere||"")+" . "+(w.necesita||""),misTrabajos())}
+function jobsCalc(w){w=w||W;return detectados(w).filter(j=>!j.serv).map(j=>{const o=(w.jobs||{})[j.id]||{};return Object.assign({},j,{on:!o.off,h:o.h!==undefined&&o.h!==""?num(o.h):num(j.h),p:o.p!==undefined&&o.p!==""?num(o.p):num(j.p)})})}
+function servDeJob(j,w){if(j.serv!=="fab")return j.serv;const t=(w||W).tipo;return t==="Auto"?"fab-seats-car":"fab-seats-suv"}
 function calc(w){w=w||W;const cf=CF(),tx=tasas(),mi=NIVEL[w.insp.int]||1,me=NIVEL[w.insp.ext]||1,ft=num(w.ft);
   const lines=[];let web=0,H=0,P=0;
   (w.items||[]).forEach(it=>{const sv=servByKey(it.key)||{key:it.key,nombre:it.nombre,precio:num(it.precio)};const b=base(sv);const cant=Math.max(1,num(it.cant)||1);
@@ -304,6 +323,7 @@ function calc(w){w=w||W;const cf=CF(),tx=tasas(),mi=NIVEL[w.insp.int]||1,me=NIVE
     const f=b.a==="int"?mi:b.a==="ext"?me:b.a==="ambos"?(.6*mi+.4*me):1;const ha=h*f;
     lines.push({key:it.key,nombre:sv.nombre||it.nombre,cant:b.ft?1:cant,web:wv,h:ha,hBase:h,p,hs:b.hs,ft:!!b.ft});web+=wv;H+=ha;P+=p});
   let hx=0,px=0;if(w.insp.olor){hx+=.5;px+=6}
+  const jobs=jobsCalc(w);jobs.forEach(j=>{if(j.on){hx+=j.h;px+=j.p}});
   hx+=num(w.extraH);px+=num(w.extraP);H+=hx;P+=px;
   const millas=num(w.millas)*2;const gas=millas*costoMilla(Object.assign({},cf,{mpg:num(cf.mpg)||20}));
   const herr=H?herramientasPorTrabajo(S.cot):0;
@@ -313,7 +333,7 @@ function calc(w){w=w||W;const cf=CF(),tx=tasas(),mi=NIVEL[w.insp.int]||1,me=NIVE
   const fin=num(w.precioFinal)||rec;
   const net=(fin*(1-tx.b)-C)*(1-tx.t);const ph=H?net/H:0;
   const impuestos=Math.max(0,(fin*(1-tx.b)-C))*tx.t+fin*tx.b;
-  return {lines,web,H,hx,P,px,gas,herr,millas,C,meta,real,imp,rec,fin,net,ph,impuestos,tx}}
+  return {lines,jobs,web,H,hx,P,px,gas,herr,millas,C,meta,real,imp,rec,fin,net,ph,impuestos,tx}}
 
 // ---------- vistas ----------
 const IC={nueva:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',lista:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',ajustes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
@@ -352,19 +372,25 @@ function vNueva(){const w=W,cli=w.clienteId?byId("clientes",w.clienteId):null;co
    '<div class="f"><label>Pintura</label>'+seg("pintura",[["buena","Buena"],["rayones","Rayones o swirls"],["opaca","Opaca"]])+'</div>'+
    '<label class="chk"><input type="checkbox" data-w="olor" '+(w.insp.olor?"checked":"")+'> Olor fuerte (humo, comida, humedad)</label>'+
    '<div class="f"><label for="w_q">Lo que quiere el cliente</label><textarea id="w_q" data-w="quiere" rows="2" placeholder="Ej. quiere quitar el pelo del perro y la mancha del asiento">'+esc(w.quiere)+'</textarea></div>'+
-   '<div class="f"><label for="w_n">Lo que necesita el auto (tu opinión)</label><textarea id="w_n" data-w="necesita" rows="2" placeholder="Ej. alfombra muy sucia, necesita extracción">'+esc(w.necesita)+'</textarea></div></section>';
+   '<div class="f"><label for="w_n">Lo que necesita el auto (tu opinión)</label><textarea id="w_n" data-w="necesita" rows="2" placeholder="Ej. alfombra muy sucia, necesita extracción">'+esc(w.necesita)+'</textarea></div><div id="jobs">'+jobsHTML(k)+'</div></section>';
   // 3
-  h+='<section class="card step"><h2><i>3</i>Servicios</h2>'+sugerencias()+selHTML(k)+'<button type="button" class="btn" style="width:100%;margin-top:10px" data-a="elegir">+ Agregar servicio</button>'+
-   '<div class="g2" style="margin-top:6px"><div class="f"><label for="w_xh">Tiempo extra que ves (horas)</label><input id="w_xh" inputmode="decimal" data-w="extraH" value="'+esc(w.extraH)+'" placeholder="0"></div><div class="f"><label for="w_xp">Productos extra ($)</label><input id="w_xp" inputmode="decimal" data-w="extraP" value="'+esc(w.extraP)+'" placeholder="0"></div></div></section>';
+  h+='<section class="card step"><h2><i>3</i>Servicios</h2><div id="sugbox">'+sugerencias()+'</div>'+selHTML(k)+'<button type="button" class="btn" style="width:100%;margin-top:10px" data-a="elegir">+ Agregar servicio</button>'+
+   '<h2 style="margin-top:16px;font-size:15px">Trabajo extra tuyo</h2><p class="note" style="margin-top:0">Para algo que no salió arriba. Se guarda solo en tu lista y la próxima vez la app lo reconoce.</p><div class="f"><label for="w_xn">¿Qué es?</label><input id="w_xn" data-w="extraNombre" value="'+esc(w.extraNombre||"")+'" placeholder="Ej. limpiar cromo de rines"></div><div class="g2" style="margin-top:0"><div class="f"><label for="w_xh">Horas extra</label><input id="w_xh" inputmode="decimal" data-w="extraH" value="'+esc(w.extraH)+'" placeholder="0"></div><div class="f"><label for="w_xp">Gasto extra ($)</label><input id="w_xp" inputmode="decimal" data-w="extraP" value="'+esc(w.extraP)+'" placeholder="0"></div></div></section>';
   // 4
   h+='<section class="card step" id="precio"><h2><i>4</i>Precio</h2>'+(w.items.length?precioHTML(k):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>')+'</section>';
   h+='<div class="btns"><button type="button" class="btn pri" style="flex:1" data-a="guardar">Guardar cotización</button><button type="button" class="btn" data-a="descartar">'+(w.nuevo?"Empezar de nuevo":"Cancelar")+'</button></div>';
   return h}
+function jobsHTML(k){const det=detectados();if(!det.length)return (W.quiere||W.necesita)?'<p class="note">No reconocí un trabajo especial en lo que escribiste. Si hay algo extra, ponlo abajo en “Trabajo extra tuyo”.</p>':"";
+  const js=k.jobs;let h='<div class="jobs"><p class="jk">Lo que se necesita para lo que escribiste</p>';
+  js.forEach(j=>{h+='<div class="job'+(j.on?"":" off")+'"><label class="jt"><input type="checkbox" data-job="'+esc(j.id)+'" data-c="on" '+(j.on?"checked":"")+'><span>'+esc(j.n)+(j.mio?' <small>tuyo</small>':"")+'</span></label>'+(j.prod&&j.prod!=="—"?'<div class="jd">Productos: '+esc(j.prod)+'</div>':"")+(j.herr&&j.herr!=="—"?'<div class="jd">Herramientas: '+esc(j.herr)+'</div>':"")+'<div class="jin"><label>Horas<input inputmode="decimal" data-job="'+esc(j.id)+'" data-c="h" value="'+esc(j.h)+'"></label><label>Gasto $<input inputmode="decimal" data-job="'+esc(j.id)+'" data-c="p" value="'+esc(j.p)+'"></label></div></div>'});
+  det.filter(j=>j.serv).forEach(j=>{const s=servByKey(servDeJob(j));if(!s)return;const ya=W.items.some(x=>x.key===s.key);h+='<div class="job sv"><span>'+esc(j.n)+'</span><small>'+(ya?"Ya va en: ":"Se cobra con el servicio: ")+esc(s.nombre)+'</small>'+(ya?"":'<button type="button" class="chip" data-a="sugAdd" data-k="'+esc(s.key)+'" data-c="1">+ Agregar '+money0(num(s.precio))+'</button>')+'</div>'});
+  return h+'</div>'}
 function sugerencias(){const w=W,i=w.insp,tiene=k=>w.items.some(x=>x.key===k),out=[];const add=(k,c,por)=>{const s=servByKey(k);if(s&&!tiene(k))out.push([k,c||1,s,por])};
   if(i.mascotas==="poco")add("x-pet",1,"pelo de mascota");if(i.mascotas==="mucho")add(i.manchas!=="no"?"x-petstain":"x-pet",1,"mucho pelo de mascota");
   if(i.manchas==="algunas")add("x-shampoo",2,"manchas");if(i.manchas==="muchas")add("x-shampoo",5,"muchas manchas");
   if(i.moho!=="no")add("x-mold",i.moho==="ambos"?2:1,"moho o lama");
-  if(i.pintura==="rayones")add("paint",1,"rayones en la pintura");if(i.pintura==="opaca"&&!tiene("paint"))add("x-wax",1,"pintura opaca");
+  if(i.pintura==="rayones")add("paint",1,"rayones en la pintura");
+  detectados(w).filter(j=>j.serv).forEach(j=>add(servDeJob(j,w),1,"lo que escribiste"));if(i.pintura==="opaca"&&!tiene("paint"))add("x-wax",1,"pintura opaca");
   if(!w.items.some(x=>!/^(x-|fab-|wheel)/.test(x.key))){const t=w.tipo,suf=t==="Auto"?"car":t==="Pickup"?"truck":"suv";if(t==="Bote")add("boat-wash",1,"punto de partida");else if(t==="RV / Casa rodante")add("rv-wash",1,"punto de partida");else{const q=(w.quiere+" "+w.necesita).toLowerCase();const k=/inter|asiento|alfombra|seat|carpet/.test(q)&&!/exter|lavad|wash|cera/.test(q)?"int":/exter|wash|lavad/.test(q)&&!/inter/.test(q)?"ext":"full";add(k+"-"+suf,1,"según el vehículo")}}
   if(!out.length)return "";
   return '<div class="sug"><p class="note" style="margin:0 0 6px">Sugerido por tu inspección</p>'+out.map(([k,c,s,por])=>'<button type="button" class="chip" data-a="sugAdd" data-k="'+esc(k)+'" data-c="'+c+'">+ '+esc(s.nombre)+(c>1?" ×"+c:"")+' <small>'+esc(por)+'</small></button>').join("")+'</div>'}
@@ -425,11 +451,16 @@ function vVer(){const e=byId("estimaciones",VER);if(!e)return '<p class="empty">
 function vAjustes(){const c=CF(),tx=tasas();
   let h='<h1>Ajustes</h1><form class="card" id="cfg"><h2>Tu ganancia</h2><div class="f"><label for="a_meta">Lo que quieres ganar por hora, limpio ($)</label><input id="a_meta" name="metaHora" inputmode="decimal" value="'+esc(c.metaHora)+'"></div><div class="f"><label for="a_imp">Gasto inesperado (%)</label><input id="a_imp" name="imprevisto" inputmode="decimal" value="'+esc(c.imprevisto)+'"></div><p class="note">Un colchón para lo que no se ve en la inspección: más producto, más tiempo, una toalla que se pierde.</p><p class="note">Impuestos: uso los de AL Números, unos '+Math.round(tx.t*100)+'% de la ganancia'+(tx.b?' más '+(Math.round(tx.b*1000)/10)+'% del cobro (B&O)':'')+'.</p>'+
    '<h2 style="margin-top:18px">Tu van de trabajo</h2><div class="g2"><div class="f"><label for="a_mpg">Millas por galón</label><input id="a_mpg" name="mpg" inputmode="decimal" value="'+esc(c.mpg)+'"></div><div class="f"><label for="a_gas">Precio del galón ($)</label><input id="a_gas" name="gas" inputmode="decimal" value="'+esc(c.gas)+'"></div></div><div class="f"><label for="a_des">Desgaste de la van por milla ($, opcional)</label><input id="a_des" name="desgaste" inputmode="decimal" value="'+esc(c.desgaste)+'"></div><div class="f"><label for="a_base">Tu base (de donde sales)</label><input id="a_base" name="base" value="'+esc(c.base)+'" placeholder="Ciudad o dirección"></div><div class="f"><label for="a_val">Cotización válida por (días)</label><input id="a_val" name="validez" inputmode="numeric" value="'+esc(c.validez)+'"></div>'+
-   prodHTML()+
+   prodHTML()+misHTML()+
    '<h2 style="margin-top:18px">Tiempo y productos por servicio</h2><p class="note" style="margin-top:0">Los números grises salen de tus productos de arriba. Si un servicio te gasta distinto, pon tu número. Cuando tengas 3 trabajos o más de un servicio con el tiempo anotado, uso tu promedio real.</p><div class="svrow svhd"><span>Servicio</span><span>Horas</span><span>Productos</span></div>'+
    servs().filter(s=>META[s.key]&&!META[s.key].ft).map(s=>{const M=META[s.key],v=c.serv[s.key]||{},pr=promedios()[s.nombre];return '<div class="svrow"><span>'+esc(s.nombre)+(pr?'<small class="s" style="display:block;color:var(--muted)">real: '+hTxt(pr.h)+' ('+pr.n+')</small>':"")+'</span><input name="h_'+esc(s.key)+'" inputmode="decimal" placeholder="'+M.h+'" value="'+esc(v.h||"")+'" aria-label="Horas"><input name="p_'+esc(s.key)+'" inputmode="decimal" placeholder="'+(costoProductos(s.key,S.cot)!=null?Math.round(costoProductos(s.key,S.cot)):M.p)+'" value="'+esc(v.p!==undefined?v.p:"")+'" aria-label="Productos"></div>'}).join("")+
    '<div class="btns"><button type="submit" class="btn pri" style="flex:1">Guardar ajustes</button></div></form>';
   return h}
+
+// --- tus trabajos guardados ---
+function filaMio(j){return '<div class="prow" data-row="mio" data-id="'+esc(j.id||"")+'"><input data-c="n" value="'+esc(j.n||"")+'" placeholder="Trabajo" aria-label="Trabajo"><input data-c="kw" value="'+esc((j.kw||[]).join(", "))+'" placeholder="Palabras para reconocerlo, separadas con coma" aria-label="Palabras" style="font-weight:400"><div class="prow2"><label>Horas<input data-c="h" inputmode="decimal" value="'+esc(j.h!=null?j.h:"")+'"></label><label>Gasto $<input data-c="p" inputmode="decimal" value="'+esc(j.p!=null?j.p:"")+'"></label><button type="button" class="x" data-a="quitarFila" aria-label="Quitar" style="margin-left:auto">×</button></div></div>'}
+function misHTML(){const l=misTrabajos();return '<details class="fold" style="margin-top:10px"><summary>Tus trabajos guardados · '+l.length+'</summary><div style="padding:0 16px 14px"><p class="note" style="margin-top:0">Se guardan solos cuando pones un “Trabajo extra tuyo” en una cotización. La app los reconoce cuando escribes 2 de sus palabras (o la única que tenga). La guía ya trae '+TRABAJOS.length+' trabajos comunes.</p><div id="mios">'+(l.length?l.map(filaMio).join(""):'<p class="empty">Todavía no tienes trabajos guardados.</p>')+'</div></div></details>'}
+const leerMios=f=>[...f.querySelectorAll('[data-row="mio"]')].map(r=>{const g=c=>r.querySelector('[data-c="'+c+'"]').value.trim();const old=misTrabajos().find(x=>x.id===r.dataset.id)||{};const n=g("n");return n?{id:r.dataset.id||("mio-"+uid().slice(0,8)),n,en:old.en||n,kw:g("kw").split(",").map(x=>norm(x)).filter(Boolean),h:num(g("h")),p:num(g("p")),prod:old.prod||"",herr:old.herr||""}:null}).filter(Boolean);
 
 // --- productos y herramientas ---
 function filaProd(p){return '<div class="prow" data-row="prod"><input data-c="n" value="'+esc(p.n||"")+'" placeholder="Producto" aria-label="Producto"><div class="prow2"><label>Pagas $<input data-c="precio" inputmode="decimal" value="'+esc(p.precio!=null?p.precio:"")+'"></label><label>Rinde<input data-c="rinde" inputmode="decimal" value="'+esc(p.rinde!=null?p.rinde:"")+'"> trabajos</label></div><div class="prow2"><select data-c="kit" aria-label="Para qué lo usas">'+opt(Object.entries(KITS),p.kit||"int")+'</select><span class="pc">'+(num(p.rinde)?money(num(p.precio)/num(p.rinde))+" por trabajo":"")+'</span><button type="button" class="x" data-a="quitarFila" aria-label="Quitar">×</button></div></div>'}
@@ -459,16 +490,24 @@ async function guardarCot(){const w=W,k=calc();
   const cli=byId("clientes",clienteId);if(cli&&w.vehiculo&&!(cli.vehiculos||[]).some(v=>(v.desc||"").toLowerCase()===w.vehiculo.toLowerCase()))await guardar("clientes",Object.assign({},cli,{vehiculos:(cli.vehiculos||[]).concat([{tipo:w.tipo,desc:w.vehiculo}])}),clienteId);
   const items=k.lines.map(l=>({desc:l.nombre,cant:l.cant,precio:Math.round(l.web/l.cant*100)/100}));
   let descuento=0;const dif=Math.round((k.fin-k.web)*100)/100;
-  if(dif>0)items.push({desc:"Condition adjustment – extra time & products for this vehicle",cant:1,precio:dif});else if(dif<0)descuento=-dif;
+  const nombres=k.jobs.filter(j=>j.on).map(j=>j.en||j.n);if(num(w.extraH)||num(w.extraP))nombres.push(w.extraNombre?w.extraNombre.trim():"extra work");
+  if(dif>0)items.push({desc:nombres.length?"Condition adjustment – "+nombres.slice(0,5).join(", "):"Condition adjustment – extra time & products for this vehicle",cant:1,precio:dif});else if(dif<0)descuento=-dif;
+  await guardarTrabajoNuevo(w);
   const prev=byId("estimaciones",w.id);
   const maxN=S.estimaciones.reduce((a,e)=>Math.max(a,parseInt(String(e.numero||"").replace(/\D/g,""))||1000),1000);
   const rec=Object.assign({},prev||{},{numero:prev&&prev.numero?prev.numero:"C-"+(maxN+1),clienteId,tipo:w.tipo,vehiculo:w.vehiculo,items,descuento,validez:CF().validez+" días",fecha:prev&&prev.fecha?prev.fecha:today(),estado:prev&&prev.estado?prev.estado:"borrador",notas:w.notas||"",
-    cot:{v:2,insp:w.insp,quiere:w.quiere,necesita:w.necesita,ft:w.ft,millas:w.millas,direccion:w.direccion,extraH:w.extraH,extraP:w.extraP,precioFinal:w.precioFinal,sel:w.items,calc:{H:k.H,P:k.P,gas:k.gas,herr:k.herr,web:k.web,real:k.real,rec:k.rec,fin:k.fin,net:k.net,ph:k.ph,meta:k.meta}}});
+    cot:{v:3,jobs:w.jobs,extraNombre:w.extraNombre||"",detectados:detectados(w).map(j=>j.id),insp:w.insp,quiere:w.quiere,necesita:w.necesita,ft:w.ft,millas:w.millas,direccion:w.direccion,extraH:w.extraH,extraP:w.extraP,precioFinal:w.precioFinal,sel:w.items,calc:{H:k.H,P:k.P,gas:k.gas,herr:k.herr,web:k.web,real:k.real,rec:k.rec,fin:k.fin,net:k.net,ph:k.ph,meta:k.meta}}});
   await guardar("estimaciones",rec,w.id);
   S.fotos.forEach(f=>{if(!f.clienteId)guardar("fotos",Object.assign({},f,{clienteId}),f.id)});
   const id=w.id;W=nuevaW();guardarBorrador();VER=id;TAB="ver";location.hash="ver";toast("Cotización guardada");render()}
+async function guardarTrabajoNuevo(w){const h=num(w.extraH),p=num(w.extraP);if(!h&&!p)return;
+  const nombre=(w.extraNombre||"").trim();if(!nombre)return;const kw=palabrasClave(nombre);if(!kw.length)return;
+  const lista=misTrabajos().slice();const i=lista.findIndex(j=>norm(j.n)===norm(nombre));
+  const rec={id:i>=0?lista[i].id:"mio-"+uid().slice(0,8),n:nombre,en:nombre,kw:i>=0&&lista[i].kw&&lista[i].kw.length?lista[i].kw:kw,h,p,prod:i>=0?lista[i].prod||"":"",herr:i>=0?lista[i].herr||"":""};
+  if(i>=0)lista[i]=rec;else lista.push(rec);
+  try{await setDoc(doc(fs,"ajustes","cotizador"),{misTrabajos:lista},{merge:true});S.cot=Object.assign({},S.cot,{misTrabajos:lista});toast(i>=0?"Actualicé «"+nombre+"» en tus trabajos":"Guardé «"+nombre+"» en tus trabajos")}catch(e){}}
 function editar(id){const e=byId("estimaciones",id);if(!e)return;const c=e.cot||{};
-  W=Object.assign(nuevaW(),{id,nuevo:false,clienteId:e.clienteId,tipo:e.tipo||"Auto",vehiculo:e.vehiculo||"",ft:c.ft||"",direccion:c.direccion||"",millas:c.millas||"",insp:Object.assign(nuevaW().insp,c.insp||{}),quiere:c.quiere||"",necesita:c.necesita||"",extraH:c.extraH||"",extraP:c.extraP||"",precioFinal:c.precioFinal||"",notas:e.notas||"",
+  W=Object.assign(nuevaW(),{id,nuevo:false,clienteId:e.clienteId,tipo:e.tipo||"Auto",vehiculo:e.vehiculo||"",ft:c.ft||"",direccion:c.direccion||"",millas:c.millas||"",insp:Object.assign(nuevaW().insp,c.insp||{}),quiere:c.quiere||"",necesita:c.necesita||"",extraH:c.extraH||"",extraP:c.extraP||"",extraNombre:c.extraNombre||"",jobs:c.jobs||{},precioFinal:c.precioFinal||"",notas:e.notas||"",
     items:c.sel||(e.items||[]).map(i=>{const s=servs().find(x=>x.nombre===i.desc);return s?{key:s.key,nombre:s.nombre,cant:num(i.cant)||1}:null}).filter(Boolean)});
   guardarBorrador();TAB="nueva";location.hash="nueva";render()}
 
@@ -491,7 +530,8 @@ function textoCliente(e,lang){const en=lang==="en",cl=byId("clientes",e.clienteI
   t+="\n"+(en?"Total":"Total")+": "+money(totalEst(e))+"\n\n";
   t+=en?"This price is based on the inspection of your vehicle and is valid for "+(parseInt(e.validez)||15)+" days. Reply YES to book your appointment, or text me any questions.":"Este precio se basa en la revisión de su vehículo y es válido por "+(parseInt(e.validez)||15)+" días. Responda SÍ para agendar su cita, o escríbame si tiene preguntas.";
   if(e.notas)t+="\n\n"+e.notas;return t}
-function trad(d,lang){if(lang!=="es")return d;return String(d).replace("Condition adjustment – extra time & products for this vehicle","Ajuste por condición del vehículo – tiempo y productos extra")}
+function trad(d,lang){if(lang!=="es")return d;let t=String(d).replace("Condition adjustment – extra time & products for this vehicle","Ajuste por condición del vehículo – tiempo y productos extra");
+  if(t.startsWith("Condition adjustment – ")){t="Ajuste por condición del vehículo – "+t.slice(23).split(", ").map(x=>{const j=TRABAJOS.find(y=>y.en===x);return j?j.n.toLowerCase():x==="extra work"?"trabajo extra":x}).join(", ")}return t}
 function smsCliente(lang){const e=byId("estimaciones",VER);if(!e)return;const cl=byId("clientes",e.clienteId)||{};const t=textoCliente(e,lang);const tel=String(cl.telefono||"").replace(/[^\d+]/g,"");
   if(!e.estado||e.estado==="borrador")guardar("estimaciones",Object.assign({},e,{estado:"enviada"}),e.id);
   location.href="sms:"+tel+"&body="+encodeURIComponent(t)}
@@ -545,18 +585,23 @@ async function pdfCliente(lang){const e=byId("estimaciones",VER);if(!e)return;co
 // ---------- eventos ----------
 function setW(campo,val){if(campo==="olor")W.insp.olor=val;else W[campo]=val;guardarBorrador()}
 let tPint=null;
+function refrescar(){const k2=calc();const jb=$("#jobs");if(jb)jb.innerHTML=jobsHTML(k2);const sb=$("#sugbox");if(sb)sb.innerHTML=sugerencias();const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>');const bb=$(".pbar");if(bb)bb.outerHTML=barra()||"";else if(W.items.length){const nv=$("nav.tabs");if(nv)nv.insertAdjacentHTML("beforebegin",barra())}}
+let tJob=null;
+document.addEventListener("input",e=>{const jid=e.target.dataset.job;if(jid&&e.target.type!=="checkbox"){W.jobs[jid]=Object.assign({},W.jobs[jid]||{},{[e.target.dataset.c]:e.target.value});guardarBorrador();clearTimeout(tJob);tJob=setTimeout(()=>{const k2=calc();const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>');const bb=$(".pbar");if(bb)bb.outerHTML=barra()||""},300);return}
+  if(e.target.dataset.w==="quiere"||e.target.dataset.w==="necesita"){setW(e.target.dataset.w,e.target.value);clearTimeout(tJob);tJob=setTimeout(refrescar,500);return}});
 document.addEventListener("input",e=>{const k=e.target.dataset.w;if(!k||e.target.type==="checkbox"||e.target.tagName==="SELECT")return;setW(k,e.target.value);
   if(["millas","ft","extraH","extraP","precioFinal"].includes(k)){clearTimeout(tPint);tPint=setTimeout(()=>{const k2=calc();
     if(k==="precioFinal"){const p=$("#pres");if(p)p.innerHTML=heroHTML(k2)}else{const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>')}
     const mn=$("#w_minote");if(mn)mn.textContent="Cuento ida y vuelta: "+k2.millas+" millas · gasolina "+money(k2.gas)+".";
     const bb=$(".pbar");if(bb)bb.outerHTML=barra()||"";},250)}});
-document.addEventListener("change",e=>{const t=e.target;if(t.id==="w_foto")return subirFotos(t);const k=t.dataset.w;if(!k)return;
+document.addEventListener("change",e=>{const t=e.target;if(t.id==="w_foto")return subirFotos(t);
+  if(t.dataset.job&&t.type==="checkbox"){W.jobs[t.dataset.job]=Object.assign({},W.jobs[t.dataset.job]||{},{off:!t.checked});guardarBorrador();refrescar();return}const k=t.dataset.w;if(!k)return;
   if(t.type==="checkbox"){setW(k,t.checked);render();return}
   if(t.tagName==="SELECT"){setW(k,t.value);if(k==="clienteId"){const c=byId("clientes",t.value);if(c){if(!W.direccion&&c.direccion)W.direccion=c.direccion;const v=(c.vehiculos||[])[0];if(v&&!W.vehiculo){W.vehiculo=v.desc||"";const tp=String(v.tipo||"");W.tipo=/suv/i.test(tp)?"SUV / Camioneta":/pick|truck/i.test(tp)?"Pickup":/bote|boat/i.test(tp)?"Bote":/rv/i.test(tp)?"RV / Casa rodante":"Auto"}}}
     if(k==="tipo")W.items=[];guardarBorrador();render();return}});
 document.addEventListener("submit",async e=>{if(e.target.id!=="cfg")return;e.preventDefault();const f=e.target;const serv={};
   f.querySelectorAll('input[name^="h_"]').forEach(i=>{const k=i.name.slice(2),p=f.querySelector('[name="p_'+k+'"]');if(i.value!==""||p.value!=="")serv[k]={h:i.value===""?"":num(i.value),p:p.value===""?undefined:num(p.value)}});
-  const o={productos:leerFilas(f,"prod"),herramientas:leerFilas(f,"herr"),metaHora:num(f.metaHora.value)||50,imprevisto:num(f.imprevisto.value),mpg:num(f.mpg.value)||20,gas:num(f.gas.value),desgaste:num(f.desgaste.value),base:f.base.value.trim(),validez:num(f.validez.value)||15,serv};
+  const o={misTrabajos:leerMios(f),productos:leerFilas(f,"prod"),herramientas:leerFilas(f,"herr"),metaHora:num(f.metaHora.value)||50,imprevisto:num(f.imprevisto.value),mpg:num(f.mpg.value)||20,gas:num(f.gas.value),desgaste:num(f.desgaste.value),base:f.base.value.trim(),validez:num(f.validez.value)||15,serv};
   try{await setDoc(doc(fs,"ajustes","cotizador"),JSON.parse(JSON.stringify(o)));toast("Ajustes guardados")}catch(x){toast("No se pudo guardar")}});
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
   if(a==="tab"){TAB=b.dataset.v;location.hash=TAB;render();return}
