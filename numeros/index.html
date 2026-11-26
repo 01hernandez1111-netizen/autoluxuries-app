@@ -170,6 +170,7 @@ nav.tabs button.on svg{background:var(--ink);stroke:#fff;border-radius:9px;width
 .now-t{display:flex;gap:12px;align-items:flex-start;margin-top:6px;font-size:16px;line-height:1.45}
 .now-t .ic{flex:0 0 34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#fff}
 details.fold{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg)}
+a.btn{text-decoration:none;color:inherit}
 details.fold>summary{list-style:none;cursor:pointer;padding:15px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 details.fold>summary::-webkit-details-marker{display:none}
 details.fold>summary::after{content:"⌄";color:var(--muted);font-size:18px;transition:transform .2s}
@@ -181,6 +182,7 @@ details.fold[open]>summary::after{transform:rotate(180deg)}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { costoProductos, herramientasPorTrabajo, costoMilla } from "./costos.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fbApp = initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
@@ -188,7 +190,7 @@ const auth = getAuth(fbApp);
 let fs; try{fs=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){fs=initializeFirestore(fbApp,{})}
 
 // ---------- estado ----------
-const S={negocio:{},apartados:[],clientes:[],membresias:[],citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],gastosFijos:[],cfg:{},ok:false};
+const S={cot:{},negocio:{},apartados:[],clientes:[],membresias:[],citas:[],pagos:[],gastos:[],millas:[],servicios:[],impuestos:[],gastosFijos:[],cfg:{},ok:false};
 let TAB=(location.hash||"#resumen").slice(1), PER="semana", OFF=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -222,11 +224,15 @@ const enR=(r,f)=>f&&f>=r.a&&f<=r.b;
 // ---------- cálculos ----------
 function itemsOf(c){if(c.items&&c.items.length)return c.items;return [{servicio:c.servicio,precio:c.precioBase!=null?c.precioBase:c.precio}]}
 function pagoHora(){return num(S.negocio&&S.negocio.pagoHora)||25}
-function cfgServ(nombre){const c=C().costos[nombre]||{};return {costo:num(c.costo),horas:num(c.horas)||0}}
+// costo de productos: el que pongas aquí, o el que sale de tus productos en AL Cotizador
+function prodDe(nombre){const sv=S.servicios.find(x=>x.nombre===nombre);if(!sv)return 0;const k=String(sv.id).startsWith("web-")?sv.id.slice(4):sv.id;const v=costoProductos(k,S.cot);return v==null?0:v}
+function cfgServ(nombre){const c=C().costos[nombre]||{};return {costo:num(c.costo)||prodDe(nombre),horas:num(c.horas)||0}}
+const cMilla=()=>costoMilla(S.cot);
+const herrTrabajo=()=>herramientasPorTrabajo(S.cot);
 function costoCita(c){const cfg=C();const prod=itemsOf(c).reduce((a,x)=>a+cfgServ(x.servicio).costo,0);
   const mi=S.millas.filter(m=>m.citaId===c.id).reduce((a,m)=>a+num(m.millas),0);
   const horas=num(c.horasReales)||itemsOf(c).reduce((a,x)=>a+(cfgServ(x.servicio).horas||0),0)||3;
-  return {prod,mi,millasCosto:mi*cfg.costoMilla,horas}}
+  return {prod,mi,millasCosto:mi*cMilla(),herr:herrTrabajo(),horas}}
 function calcular(r){const cfg=C();
   const pagos=S.pagos.filter(p=>enR(r,p.fecha)),gastos=S.gastos.filter(g=>enR(r,g.fecha)),millas=S.millas.filter(m=>enR(r,m.fecha));
   const cobrado=pagos.reduce((a,p)=>a+num(p.monto)+num(p.propina),0),propinas=pagos.reduce((a,p)=>a+num(p.propina),0);
@@ -247,7 +253,7 @@ function calcular(r){const cfg=C();
   return {pagos,gastos,millas,propinas,cobrado,sales,ingreso,gastoTot,gastoDeducible,mi,dedMillas,ganancia,gravable,se,renta,boE,boC,impuestos,libre}}
 function porServicio(r){const out={};
   S.citas.filter(c=>c.estado==="completada"&&enR(r,c.fecha)&&!c.usaMembresia).forEach(c=>{const it=itemsOf(c),base=it.reduce((a,x)=>a+num(x.precio),0)||1,k=num(c.precio)/base,cc=costoCita(c),n=it.length;
-    it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+cc.millasCosto/n;o.horas+=num(c.horasReales)?num(c.horasReales)/n:(cs.horas||3/n)})});
+    it.forEach(x=>{const nm=x.servicio||"Otro",cs=cfgServ(nm);const o=out[nm]=out[nm]||{n:0,cobrado:0,costo:0,horas:0};o.n++;o.cobrado+=num(x.precio)*k;o.costo+=cs.costo+(cc.millasCosto+cc.herr)/n;o.horas+=num(c.horasReales)?num(c.horasReales)/n:(cs.horas||3/n)})});
   return Object.entries(out).map(([k,v])=>Object.assign({nombre:k,gan:v.cobrado-v.costo,porHora:(v.cobrado-v.costo)/(v.horas||1)},v)).sort((a,b)=>b.gan-a.gan)}
 function saldoCita(c){if(c.usaMembresia)return 0;return num(c.precio)-S.pagos.filter(p=>p.citaId===c.id).reduce((a,p)=>a+num(p.monto),0)}
 // trimestres del IRS para pagos estimados
@@ -284,7 +290,7 @@ function consejos(){const cfg=C(),out=[];const r=rango(PER,OFF),k=calcular(r),pr
     if(fed-pag>1)out.push(["warn","🏛️","Faltan "+dias+" días para el pago estimado al IRS (vence el "+fDate(q.vence,{day:"numeric",month:"long"})+"). Para ese trimestre aparta unos <b>"+money0(fed-pag)+"</b>."])}}
   {const ei=estadoImpuestos();if(ei.falta>50)out.push(["warn","🏦","Te faltan <b>"+money0(ei.falta)+"</b> por apartar para impuestos este año (estimado "+money0(ei.est)+", apartado "+money0(ei.ap)+"). Pásalo a tu cuenta de ahorro y anótalo en Impuestos."])}
   {const ap=alertasPrecio().filter(x=>x.subir&&x.n>=2)[0];if(ap)out.push(["warn","💲","<b>"+esc(ap.nombre)+"</b> te deja "+money0(ap.porHora)+" por hora después de productos y millas. Considera subirlo unos "+money0(ap.subir)+"."])}
-  if(!Object.keys(C().costos).length)out.push(["info","⚙️","Ve a Ajustes y ponle a cada servicio cuánto gastas en productos y cuántas horas te toma. Así te digo cuánto te deja cada trabajo de verdad."]);
+  if(!(S.cot&&S.cot.productos&&S.cot.productos.length))out.push(["info","⚙️","Los costos de productos y herramientas son aproximados. Ve a AL Cotizador → Ajustes y pon lo que tú pagas, así te digo cuánto te deja cada trabajo de verdad."]);
   return out}
 
 // ---------- hoja (ventana de abajo) ----------
@@ -366,7 +372,7 @@ function formApartado(){sheet("Ya aparté dinero",'<div class="g2"><div class="f
 // ---------- alertas de precio ----------
 function alertasPrecio(){const cfg=C(),t=today(),obj=num(cfg.metaHora)||50,out={};
   S.citas.filter(c=>c.estado==="completada"&&!c.usaMembresia&&num(c.horasReales)>0&&c.fecha>=addDays(t,-150)).forEach(c=>{const it=itemsOf(c),base=it.reduce((a,x)=>a+num(x.precio),0)||1,k=num(c.precio)/base,cc=costoCita(c);
-    it.forEach(x=>{const nm=x.servicio||"Otro",fr=num(x.precio)/base,o=out[nm]=out[nm]||{n:0,ing:0,cost:0,h:0};o.n++;o.ing+=num(x.precio)*k;o.cost+=cfgServ(nm).costo+cc.millasCosto*fr;o.h+=num(c.horasReales)*fr})});
+    it.forEach(x=>{const nm=x.servicio||"Otro",fr=num(x.precio)/base,o=out[nm]=out[nm]||{n:0,ing:0,cost:0,h:0};o.n++;o.ing+=num(x.precio)*k;o.cost+=cfgServ(nm).costo+(cc.millasCosto+cc.herr)*fr;o.h+=num(c.horasReales)*fr})});
   return Object.entries(out).map(([n,v])=>{const ph=(v.ing-v.cost)/(v.h||1),hp=v.h/v.n;return {nombre:n,n:v.n,porHora:ph,horas:hp,subir:ph<obj?Math.ceil(((obj-ph)*hp)/5)*5:0}}).sort((a,b)=>a.porHora-b.porHora)}
 // ---------- reportes ----------
 const MESES=["E","F","M","A","M","J","J","A","S","O","N","D"];
@@ -469,7 +475,7 @@ function vTrabajos(){const r=rango(PER,OFF),cfg=C();let h=selPer();
   h+='<div class="card"><h2>Lo que más te dejó</h2>'+(ps.length?'<div class="list">'+ps.map(x=>'<div class="row"><div><div class="t">'+esc(x.nombre)+'</div><div class="s">'+x.n+' trabajo'+(x.n>1?"s":"")+' · cobrado '+money0(x.cobrado)+' · costo '+money0(x.costo)+'</div></div><div class="r"><b>'+money0(x.gan)+'</b><div class="s">'+money0(x.porHora)+'/hora</div></div></div>').join("")+'</div>':'<div class="empty">No hay trabajos completados en este periodo.</div>')+'</div>';
   h+='<div class="card"><h2>Cada trabajo</h2>'+(cs.length?'<div class="list">'+cs.map(c=>{const cc=costoCita(c),cob=c.usaMembresia?0:num(c.precio),g=cob-cc.prod-cc.millasCosto;
     const hr=num(c.horasReales),tp=hr*pagoHora();return '<div class="row"><div><div class="t">'+esc(c.servicio||"Servicio")+'</div><div class="s">'+esc(fDate(c.fecha))+(c.usaMembresia?" · membresía":"")+(num(c.horasReales)?" · ⏱ "+(Math.round(num(c.horasReales)*10)/10)+" h":"")+' · productos '+money0(cc.prod)+(cc.mi?" · "+Math.round(cc.mi)+" mi ("+money0(cc.millasCosto)+")":"")+'</div></div><div class="r"><b class="'+(g<0?"neg":"")+'">'+money0(g)+'</b><div class="s">de '+money0(cob)+'</div>'+(hr?'<div class="s" style="color:var(--ok);font-weight:600">tu pago '+money(tp)+'</div><div class="s">negocio '+money0(g-tp)+'</div>':'<div class="s">sin tiempo</div>')+'</div></div>'}).join("")+'</div>':'<div class="empty">Sin trabajos.</div>')+
-    '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − millas a '+money(cfg.costoMilla)+' por milla. "Tu pago" = horas del cronómetro × '+money(pagoHora())+' por hora, y "negocio" es lo que queda después de pagarte. Los costos por servicio se cambian en Ajustes.</p></div>';
+    '<p class="note">Ganancia de cada trabajo = lo que cobraste − productos que usaste − desgaste de herramientas ('+money(herrTrabajo())+') − millas a '+money(cMilla())+' por milla (gasolina de tu van). "Tu pago" = horas del cronómetro × '+money(pagoHora())+' por hora, y "negocio" es lo que queda después de pagarte. Los costos por servicio se cambian en Ajustes.</p></div>';
   return h}
 function vGastos(){const r=rango(PER,OFF);let h=selPer();
   const gl=S.gastos.filter(g=>enR(r,g.fecha)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));const tot=gl.reduce((a,g)=>a+num(g.monto),0);
@@ -504,9 +510,9 @@ function vAjustes(){const cfg=C();const servs=[...new Set(S.servicios.map(s=>s.n
   '<label class="chk"><input type="checkbox" name="boEstado" '+(cfg.boEstado?"checked":"")+'> Contar B&amp;O del estado</label><div class="f"><label for="a_be">B&amp;O del estado (%)</label><input id="a_be" name="boEstadoPct" inputmode="decimal" value="'+cfg.boEstadoPct+'"></div><p class="note">Si tu negocio es chico, el crédito para negocios pequeños de Washington normalmente te deja sin B&amp;O estatal que pagar. Déjalo apagado si es tu caso.</p>'+
   '<label class="chk"><input type="checkbox" name="salesIncluido" '+(cfg.salesIncluido?"checked":"")+'> Mis cobros ya incluyen sales tax</label><div class="f"><label for="a_st">Sales tax (%)</label><input id="a_st" name="salesPct" inputmode="decimal" value="'+cfg.salesPct+'"></div>'+
   '<h2 style="margin-top:18px">Vehículo</h2><div class="f"><label for="a_m">Cómo descuento el vehículo</label><select id="a_m" name="metodoAuto"><option value="millas" '+(cfg.metodoAuto==="millas"?"selected":"")+'>Por millas (tarifa del IRS)</option><option value="gastos" '+(cfg.metodoAuto==="gastos"?"selected":"")+'>Por gastos reales (gasolina, mantenimiento)</option></select></div>'+
-  '<div class="f"><label for="a_cm">Lo que te cuesta de verdad cada milla</label><input id="a_cm" name="costoMilla" inputmode="decimal" value="'+cfg.costoMilla+'"></div><p class="note">Gasolina y desgaste. Se usa para saber cuánto te dejó cada trabajo.</p>'+
-  '<h2 style="margin-top:18px">Costo de cada servicio</h2><p class="note" style="margin-top:0">Cuánto gastas en productos y cuántas horas te toma cada uno.</p><div class="svrow svhd"><span>Servicio</span><span>Productos $</span><span>Horas</span></div>'+
-  servs.map((n,i)=>{const c=cfg.costos[n]||{};return '<div class="svrow"><span>'+esc(n)+'</span><input name="c_'+i+'" data-n="'+esc(n)+'" inputmode="decimal" value="'+esc(c.costo!=null?c.costo:"")+'" placeholder="0" aria-label="Productos '+esc(n)+'"><input name="h_'+i+'" inputmode="decimal" value="'+esc(c.horas!=null?c.horas:"")+'" placeholder="3" aria-label="Horas '+esc(n)+'"></div>'}).join("")+
+  '<input type="hidden" name="costoMilla" value="'+cfg.costoMilla+'"><div class="kv" style="margin-top:10px"><div><span>Cada milla de tu van</span><span>'+money(cMilla())+'</span></div><div><span>Herramientas por trabajo</span><span>'+money(herrTrabajo())+'</span></div></div><p class="note">Salen de tu van, tus productos y tus herramientas en AL Cotizador → Ajustes. Se usan para saber cuánto te dejó cada trabajo. Lo que compras de verdad se sigue anotando en Gastos.</p><div class="btns"><a class="btn" href="../cotizador/#ajustes">Cambiar en AL Cotizador</a></div>'+
+  '<h2 style="margin-top:18px">Costo de cada servicio</h2><p class="note" style="margin-top:0">Cuánto gastas en productos y cuántas horas te toma cada uno. Los números grises salen de tus productos en AL Cotizador; pon uno solo si ese servicio te gasta distinto.</p><div class="svrow svhd"><span>Servicio</span><span>Productos $</span><span>Horas</span></div>'+
+  servs.map((n,i)=>{const c=cfg.costos[n]||{};return '<div class="svrow"><span>'+esc(n)+'</span><input name="c_'+i+'" data-n="'+esc(n)+'" inputmode="decimal" value="'+esc(num(c.costo)?c.costo:"")+'" placeholder="'+Math.round(prodDe(n))+'" aria-label="Productos '+esc(n)+'"><input name="h_'+i+'" inputmode="decimal" value="'+esc(c.horas!=null?c.horas:"")+'" placeholder="3" aria-label="Horas '+esc(n)+'"></div>'}).join("")+
   '<div class="btns"><button class="btn pri" type="submit">Guardar</button></div></form>'+
   '<div class="card"><h2>De dónde salen los números</h2><p class="note" style="margin-top:0">Esta app lee sola los cobros, gastos, millas y citas que registras en la app de AutoLuxuries. No tienes que escribir nada dos veces.</p><div class="btns"><a class="btn" href="../">Abrir app de la compañía</a></div></div>';
   return h}
@@ -549,6 +555,7 @@ let renderT=null;const later=()=>{clearTimeout(renderT);renderT=setTimeout(()=>{
 function start(){const cols=["citas","pagos","gastos","millas","servicios","impuestos","gastosFijos","apartados","clientes","membresias"];let pend=cols.length+1;const done=()=>{if(--pend<=0&&!S.ok){S.ok=true;render();setTimeout(aplicarFijos,500)}};
   cols.forEach(c=>{let first=true;onSnapshot(collection(fs,c),snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));if(first){first=false;done()}else{later();if(c==="gastosFijos"&&S.ok)setTimeout(aplicarFijos,300)}},err=>{console.error(err);if(first){first=false;done()}})});
   onSnapshot(doc(fs,"ajustes","negocio"),d=>{S.negocio=d.exists()?d.data():{};if(S.ok)later()},()=>{});
+  onSnapshot(doc(fs,"ajustes","cotizador"),d=>{S.cot=d.exists()?d.data():{};if(S.ok)later()},()=>{});
   let f1=true;onSnapshot(doc(fs,"ajustes","numeros"),d=>{S.cfg=d.exists()?d.data():{};if(d.exists()&&num(S.cfg.metaHora)===45&&!S.cfg.meta50){S.cfg.metaHora=50;S.cfg.meta50=true;setDoc(doc(fs,"ajustes","numeros"),{metaHora:50,meta50:true},{merge:true}).catch(()=>{})}if(f1){f1=false;done()}else later()},()=>{if(f1){f1=false;done()}});
   setTimeout(()=>{if(!S.ok){S.ok=true;render()}},4000)}
 function login(err){$("#app").innerHTML='<div class="login"><form id="lg"><div class="logo">AutoLuxuries<br><span style="font-size:15px;opacity:.7;letter-spacing:.15em">NÚMEROS</span></div><p style="opacity:.75;margin:0 0 6px">Entra con el mismo correo y contraseña de tu app de la compañía.</p><input id="lg_e" type="email" autocomplete="username" placeholder="Correo" required><input id="lg_p" type="password" autocomplete="current-password" placeholder="Contraseña" required>'+(err?'<p style="color:#f08080;margin:0">'+esc(err)+'</p>':"")+'<button id="lg_btn" type="submit">Entrar</button></form></div>';

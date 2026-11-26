@@ -207,6 +207,15 @@ a.btn{text-decoration:none;color:inherit}
 .pbar small{font-size:12px;opacity:.7}
 .pbar b{font-family:var(--display);font-stretch:110%;font-size:18px;font-variant-numeric:tabular-nums}
 .pbar.ok span:last-child b{color:#7EE0A8}.pbar.bad span:last-child b{color:#FFB4A8}
+.prow{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px}
+.prow input,.prow select{padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--fill);font-size:16px}
+.prow>input{width:100%;font-weight:600}
+.prow2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.prow2 label{display:flex;align-items:center;gap:6px}
+.prow2 label input{width:72px;text-align:right}
+.prow2 select{flex:1;min-width:150px}
+.prow .pc{margin-left:auto;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.prow .x{margin-top:0}
 main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 .toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
@@ -216,6 +225,7 @@ main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { KITS, PRODUCTOS_DEF, HERRAMIENTAS_DEF, costoKit, herramientasPorTrabajo, costoMilla, costoProductos } from "./costos.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fbApp = initializeApp({apiKey:"AIzaSyCLgJjUAdf6x4s4niznjfWdLb-YRb0hoho",authDomain:"autoluxuries.firebaseapp.com",projectId:"autoluxuries",storageBucket:"autoluxuries.firebasestorage.app",messagingSenderId:"315079290347",appId:"1:315079290347:web:2f9f470fae7721bce73dae"});
@@ -277,6 +287,7 @@ function promedios(){if(PROM)return PROM;const m={};
 function base(sv){const k=sv.key,M=META[k]||{h:2,p:8,a:"ambos"},cf=CF().serv[k]||{},nc=((S.ncfg&&S.ncfg.costos)||{})[sv.nombre]||{},pr=promedios()[sv.nombre];
   let h=M.h||0,hs="estimado",p=M.p||0,ps="estimado";
   if(num(nc.horas)){h=num(nc.horas);hs="AL Números"}if(num(cf.h)){h=num(cf.h);hs="tus ajustes"}if(pr&&pr.n>=3){h=pr.h;hs="tus trabajos ("+pr.n+")"}
+  const kp=costoProductos(k,S.cot);if(kp!=null){p=kp;ps="tus productos"}
   if(num(nc.costo)){p=num(nc.costo);ps="AL Números"}if(cf.p!==undefined&&cf.p!==""){p=num(cf.p);ps="tus ajustes"}
   return {h,hs,p,ps,a:M.a||"ambos",ft:M.ft||null}}
 
@@ -294,14 +305,15 @@ function calc(w){w=w||W;const cf=CF(),tx=tasas(),mi=NIVEL[w.insp.int]||1,me=NIVE
     lines.push({key:it.key,nombre:sv.nombre||it.nombre,cant:b.ft?1:cant,web:wv,h:ha,hBase:h,p,hs:b.hs,ft:!!b.ft});web+=wv;H+=ha;P+=p});
   let hx=0,px=0;if(w.insp.olor){hx+=.5;px+=6}
   hx+=num(w.extraH);px+=num(w.extraP);H+=hx;P+=px;
-  const millas=num(w.millas)*2;const gas=millas/(num(cf.mpg)||20)*num(cf.gas)+millas*num(cf.desgaste);
-  const C=P+gas;const meta=num(cf.metaHora)||50;
+  const millas=num(w.millas)*2;const gas=millas*costoMilla(Object.assign({},cf,{mpg:num(cf.mpg)||20}));
+  const herr=H?herramientasPorTrabajo(S.cot):0;
+  const C=P+gas+herr;const meta=num(cf.metaHora)||50;
   const sinImp=H?(C+meta*H/(1-tx.t))/(1-tx.b):0;const imp=sinImp*num(cf.imprevisto)/100;const real=sinImp+imp;
   const rec=Math.ceil(Math.max(web,real)/5)*5;
   const fin=num(w.precioFinal)||rec;
   const net=(fin*(1-tx.b)-C)*(1-tx.t);const ph=H?net/H:0;
   const impuestos=Math.max(0,(fin*(1-tx.b)-C))*tx.t+fin*tx.b;
-  return {lines,web,H,hx,P,px,gas,millas,C,meta,real,imp,rec,fin,net,ph,impuestos,tx}}
+  return {lines,web,H,hx,P,px,gas,herr,millas,C,meta,real,imp,rec,fin,net,ph,impuestos,tx}}
 
 // ---------- vistas ----------
 const IC={nueva:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',lista:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',ajustes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
@@ -361,7 +373,7 @@ function selHTML(k){if(!W.items.length)return '<p class="empty">Todavía no hay 
    (CANT.includes(l.key)?'<div class="qty"><button type="button" data-a="cant" data-i="'+i+'" data-d="-1" aria-label="Menos">−</button><span>'+l.cant+'</span><button type="button" data-a="cant" data-i="'+i+'" data-d="1" aria-label="Más">+</button></div>':"")+
    '</div><div class="r"><b>'+money0(l.web)+'</b><button type="button" class="x" data-a="quitar" data-i="'+i+'" aria-label="Quitar">×</button></div></div>').join("")+'</div>'}
 function precioHTML(k){const ok=k.ph>=k.meta-0.5,dif=k.real-k.web;
-  let h='<div class="kv"><div><span>Precio de tu sitio web</span><span>'+money(k.web)+'</span></div><div><span>Tiempo total</span><span>'+hTxt(k.H)+'</span></div><div class="sub"><span>Productos'+(k.px?" (incluye extras)":"")+'</span><span>'+money(k.P)+'</span></div><div class="sub"><span>Gasolina ('+k.millas+' mi)</span><span>'+money(k.gas)+'</span></div><div class="sub"><span>Tu pago: '+hTxt(k.H)+' × '+money0(k.meta)+'/h limpio</span><span>'+money(k.meta*k.H)+'</span></div><div class="sub"><span>Impuestos aprox.</span><span>'+Math.round(k.tx.t*100)+'% de la ganancia</span></div><div class="sub"><span>Gasto inesperado ('+CF().imprevisto+'%)</span><span>'+money(k.imp)+'</span></div><div class="tot"><span>Precio real que necesitas</span><span>'+money(k.real)+'</span></div></div>';
+  let h='<div class="kv"><div><span>Precio de tu sitio web</span><span>'+money(k.web)+'</span></div><div><span>Tiempo total</span><span>'+hTxt(k.H)+'</span></div><div class="sub"><span>Productos'+(k.px?" (incluye extras)":"")+'</span><span>'+money(k.P)+'</span></div><div class="sub"><span>Herramientas (desgaste)</span><span>'+money(k.herr)+'</span></div><div class="sub"><span>Gasolina ('+k.millas+' mi)</span><span>'+money(k.gas)+'</span></div><div class="sub"><span>Tu pago: '+hTxt(k.H)+' × '+money0(k.meta)+'/h limpio</span><span>'+money(k.meta*k.H)+'</span></div><div class="sub"><span>Impuestos aprox.</span><span>'+Math.round(k.tx.t*100)+'% de la ganancia</span></div><div class="sub"><span>Gasto inesperado ('+CF().imprevisto+'%)</span><span>'+money(k.imp)+'</span></div><div class="tot"><span>Precio real que necesitas</span><span>'+money(k.real)+'</span></div></div>';
   h+=dif>2?'<div class="tip warn"><span class="ic">💲</span><div>El precio web se queda corto <b>'+money0(dif)+'</b> para este auto. Te recomiendo <b>'+money0(k.rec)+'</b>. En la cotización la diferencia sale como “ajuste por condición del vehículo”.</div></div>':'<div class="tip good"><span class="ic">✅</span><div>El precio web te deja tu meta. Te recomiendo <b>'+money0(k.rec)+'</b>.</div></div>';
   h+='<div class="f"><label for="w_pf">Precio final para el cliente</label><input id="w_pf" inputmode="decimal" data-w="precioFinal" value="'+esc(W.precioFinal||"")+'" placeholder="'+k.rec+'"></div>';
   h+='<div id="pres">'+heroHTML(k)+'</div>';
@@ -413,10 +425,20 @@ function vVer(){const e=byId("estimaciones",VER);if(!e)return '<p class="empty">
 function vAjustes(){const c=CF(),tx=tasas();
   let h='<h1>Ajustes</h1><form class="card" id="cfg"><h2>Tu ganancia</h2><div class="f"><label for="a_meta">Lo que quieres ganar por hora, limpio ($)</label><input id="a_meta" name="metaHora" inputmode="decimal" value="'+esc(c.metaHora)+'"></div><div class="f"><label for="a_imp">Gasto inesperado (%)</label><input id="a_imp" name="imprevisto" inputmode="decimal" value="'+esc(c.imprevisto)+'"></div><p class="note">Un colchón para lo que no se ve en la inspección: más producto, más tiempo, una toalla que se pierde.</p><p class="note">Impuestos: uso los de AL Números, unos '+Math.round(tx.t*100)+'% de la ganancia'+(tx.b?' más '+(Math.round(tx.b*1000)/10)+'% del cobro (B&O)':'')+'.</p>'+
    '<h2 style="margin-top:18px">Tu van de trabajo</h2><div class="g2"><div class="f"><label for="a_mpg">Millas por galón</label><input id="a_mpg" name="mpg" inputmode="decimal" value="'+esc(c.mpg)+'"></div><div class="f"><label for="a_gas">Precio del galón ($)</label><input id="a_gas" name="gas" inputmode="decimal" value="'+esc(c.gas)+'"></div></div><div class="f"><label for="a_des">Desgaste de la van por milla ($, opcional)</label><input id="a_des" name="desgaste" inputmode="decimal" value="'+esc(c.desgaste)+'"></div><div class="f"><label for="a_base">Tu base (de donde sales)</label><input id="a_base" name="base" value="'+esc(c.base)+'" placeholder="Ciudad o dirección"></div><div class="f"><label for="a_val">Cotización válida por (días)</label><input id="a_val" name="validez" inputmode="numeric" value="'+esc(c.validez)+'"></div>'+
-   '<h2 style="margin-top:18px">Tiempo y productos por servicio</h2><p class="note" style="margin-top:0">Los números grises son mi punto de partida. Pon los tuyos. Cuando tengas 3 trabajos o más de un servicio con el tiempo anotado, uso tu promedio real.</p><div class="svrow svhd"><span>Servicio</span><span>Horas</span><span>Productos</span></div>'+
-   servs().filter(s=>META[s.key]&&!META[s.key].ft).map(s=>{const M=META[s.key],v=c.serv[s.key]||{},pr=promedios()[s.nombre];return '<div class="svrow"><span>'+esc(s.nombre)+(pr?'<small class="s" style="display:block;color:var(--muted)">real: '+hTxt(pr.h)+' ('+pr.n+')</small>':"")+'</span><input name="h_'+esc(s.key)+'" inputmode="decimal" placeholder="'+M.h+'" value="'+esc(v.h||"")+'" aria-label="Horas"><input name="p_'+esc(s.key)+'" inputmode="decimal" placeholder="'+M.p+'" value="'+esc(v.p!==undefined?v.p:"")+'" aria-label="Productos"></div>'}).join("")+
+   prodHTML()+
+   '<h2 style="margin-top:18px">Tiempo y productos por servicio</h2><p class="note" style="margin-top:0">Los números grises salen de tus productos de arriba. Si un servicio te gasta distinto, pon tu número. Cuando tengas 3 trabajos o más de un servicio con el tiempo anotado, uso tu promedio real.</p><div class="svrow svhd"><span>Servicio</span><span>Horas</span><span>Productos</span></div>'+
+   servs().filter(s=>META[s.key]&&!META[s.key].ft).map(s=>{const M=META[s.key],v=c.serv[s.key]||{},pr=promedios()[s.nombre];return '<div class="svrow"><span>'+esc(s.nombre)+(pr?'<small class="s" style="display:block;color:var(--muted)">real: '+hTxt(pr.h)+' ('+pr.n+')</small>':"")+'</span><input name="h_'+esc(s.key)+'" inputmode="decimal" placeholder="'+M.h+'" value="'+esc(v.h||"")+'" aria-label="Horas"><input name="p_'+esc(s.key)+'" inputmode="decimal" placeholder="'+(costoProductos(s.key,S.cot)!=null?Math.round(costoProductos(s.key,S.cot)):M.p)+'" value="'+esc(v.p!==undefined?v.p:"")+'" aria-label="Productos"></div>'}).join("")+
    '<div class="btns"><button type="submit" class="btn pri" style="flex:1">Guardar ajustes</button></div></form>';
   return h}
+
+// --- productos y herramientas ---
+function filaProd(p){return '<div class="prow" data-row="prod"><input data-c="n" value="'+esc(p.n||"")+'" placeholder="Producto" aria-label="Producto"><div class="prow2"><label>Pagas $<input data-c="precio" inputmode="decimal" value="'+esc(p.precio!=null?p.precio:"")+'"></label><label>Rinde<input data-c="rinde" inputmode="decimal" value="'+esc(p.rinde!=null?p.rinde:"")+'"> trabajos</label></div><div class="prow2"><select data-c="kit" aria-label="Para qué lo usas">'+opt(Object.entries(KITS),p.kit||"int")+'</select><span class="pc">'+(num(p.rinde)?money(num(p.precio)/num(p.rinde))+" por trabajo":"")+'</span><button type="button" class="x" data-a="quitarFila" aria-label="Quitar">×</button></div></div>'}
+function filaHerr(t){return '<div class="prow" data-row="herr"><input data-c="n" value="'+esc(t.n||"")+'" placeholder="Herramienta" aria-label="Herramienta"><div class="prow2"><label>Costó $<input data-c="precio" inputmode="decimal" value="'+esc(t.precio!=null?t.precio:"")+'"></label><label>Dura<input data-c="vida" inputmode="decimal" value="'+esc(t.vida!=null?t.vida:"")+'"> trabajos</label><span class="pc">'+(num(t.vida)?money(num(t.precio)/num(t.vida)):"")+'</span><button type="button" class="x" data-a="quitarFila" aria-label="Quitar">×</button></div></div>'}
+function prodHTML(){const c=S.cot||{},prods=c.productos&&c.productos.length?c.productos:PRODUCTOS_DEF,herr=c.herramientas&&c.herramientas.length?c.herramientas:HERRAMIENTAS_DEF,kc=costoKit(c);
+  const aprox=!(c.productos&&c.productos.length);
+  return '<details class="fold" style="margin-top:18px"><summary>Tus productos · '+money(kc.int)+' interior, '+money(kc.ext)+' exterior</summary><div style="padding:0 16px 14px"><p class="note" style="margin-top:0">'+(aprox?"Son precios aproximados para empezar. Cámbialos por lo que tú pagas y cuántos trabajos te rinde cada uno.":"Cuánto pagas y cuántos trabajos te rinde cada uno.")+' Por trabajo te salen: interior '+money(kc.int)+', exterior '+money(kc.ext)+'.</p><div id="prods">'+prods.map(filaProd).join("")+'</div><button type="button" class="btn" style="width:100%;margin-top:8px" data-a="addFila" data-t="prod">+ Agregar producto</button></div></details>'+
+   '<details class="fold" style="margin-top:10px"><summary>Tus herramientas · '+money(herramientasPorTrabajo(c))+' por trabajo</summary><div style="padding:0 16px 14px"><p class="note" style="margin-top:0">Lo que te costó cada una y cuántos trabajos aguanta. Así cada trabajo paga su parte: hoy '+money(herramientasPorTrabajo(c))+' por trabajo.</p><div id="herrs">'+herr.map(filaHerr).join("")+'</div><button type="button" class="btn" style="width:100%;margin-top:8px" data-a="addFila" data-t="herr">+ Agregar herramienta</button></div></details>'}
+const leerFilas=(f,t)=>[...f.querySelectorAll('[data-row="'+t+'"]')].map(r=>{const o={};r.querySelectorAll("[data-c]").forEach(i=>{o[i.dataset.c]=i.dataset.c==="n"||i.dataset.c==="kit"?i.value.trim():num(i.value)});return o}).filter(o=>o.n);
 
 // ---------- fotos ----------
 let fotoUnsub=null,fotoDe=null;
@@ -441,7 +463,7 @@ async function guardarCot(){const w=W,k=calc();
   const prev=byId("estimaciones",w.id);
   const maxN=S.estimaciones.reduce((a,e)=>Math.max(a,parseInt(String(e.numero||"").replace(/\D/g,""))||1000),1000);
   const rec=Object.assign({},prev||{},{numero:prev&&prev.numero?prev.numero:"C-"+(maxN+1),clienteId,tipo:w.tipo,vehiculo:w.vehiculo,items,descuento,validez:CF().validez+" días",fecha:prev&&prev.fecha?prev.fecha:today(),estado:prev&&prev.estado?prev.estado:"borrador",notas:w.notas||"",
-    cot:{v:1,insp:w.insp,quiere:w.quiere,necesita:w.necesita,ft:w.ft,millas:w.millas,direccion:w.direccion,extraH:w.extraH,extraP:w.extraP,precioFinal:w.precioFinal,sel:w.items,calc:{H:k.H,P:k.P,gas:k.gas,web:k.web,real:k.real,rec:k.rec,fin:k.fin,net:k.net,ph:k.ph,meta:k.meta}}});
+    cot:{v:2,insp:w.insp,quiere:w.quiere,necesita:w.necesita,ft:w.ft,millas:w.millas,direccion:w.direccion,extraH:w.extraH,extraP:w.extraP,precioFinal:w.precioFinal,sel:w.items,calc:{H:k.H,P:k.P,gas:k.gas,herr:k.herr,web:k.web,real:k.real,rec:k.rec,fin:k.fin,net:k.net,ph:k.ph,meta:k.meta}}});
   await guardar("estimaciones",rec,w.id);
   S.fotos.forEach(f=>{if(!f.clienteId)guardar("fotos",Object.assign({},f,{clienteId}),f.id)});
   const id=w.id;W=nuevaW();guardarBorrador();VER=id;TAB="ver";location.hash="ver";toast("Cotización guardada");render()}
@@ -534,11 +556,13 @@ document.addEventListener("change",e=>{const t=e.target;if(t.id==="w_foto")retur
     if(k==="tipo")W.items=[];guardarBorrador();render();return}});
 document.addEventListener("submit",async e=>{if(e.target.id!=="cfg")return;e.preventDefault();const f=e.target;const serv={};
   f.querySelectorAll('input[name^="h_"]').forEach(i=>{const k=i.name.slice(2),p=f.querySelector('[name="p_'+k+'"]');if(i.value!==""||p.value!=="")serv[k]={h:i.value===""?"":num(i.value),p:p.value===""?undefined:num(p.value)}});
-  const o={metaHora:num(f.metaHora.value)||50,imprevisto:num(f.imprevisto.value),mpg:num(f.mpg.value)||20,gas:num(f.gas.value),desgaste:num(f.desgaste.value),base:f.base.value.trim(),validez:num(f.validez.value)||15,serv};
+  const o={productos:leerFilas(f,"prod"),herramientas:leerFilas(f,"herr"),metaHora:num(f.metaHora.value)||50,imprevisto:num(f.imprevisto.value),mpg:num(f.mpg.value)||20,gas:num(f.gas.value),desgaste:num(f.desgaste.value),base:f.base.value.trim(),validez:num(f.validez.value)||15,serv};
   try{await setDoc(doc(fs,"ajustes","cotizador"),JSON.parse(JSON.stringify(o)));toast("Ajustes guardados")}catch(x){toast("No se pudo guardar")}});
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
   if(a==="tab"){TAB=b.dataset.v;location.hash=TAB;render();return}
   if(a==="close")return closeSheet();
+  if(a==="addFila"){const box=$(b.dataset.t==="prod"?"#prods":"#herrs");box.insertAdjacentHTML("beforeend",b.dataset.t==="prod"?filaProd({}):filaHerr({}));const r=box.lastElementChild.querySelector("input");if(r)r.focus();return}
+  if(a==="quitarFila"){b.closest(".prow").remove();return}
   if(a==="insp"){W.insp[b.dataset.k]=b.dataset.v;guardarBorrador();render();return}
   if(a==="elegir")return elegir();
   if(a==="pick"){const k=b.dataset.k,i=W.items.findIndex(x=>x.key===k);if(i>=0)W.items.splice(i,1);else{const s=servByKey(k);W.items.push({key:k,nombre:s?s.nombre:k,cant:1})}W.precioFinal="";guardarBorrador();closeSheet();render();return}
