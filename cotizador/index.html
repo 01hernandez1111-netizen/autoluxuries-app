@@ -201,12 +201,25 @@ button.row:first-child{border-top:0}
 label.btn{position:relative;cursor:pointer}
 .lnk{border:0;background:none;padding:0;font-weight:600;color:var(--info);cursor:pointer;font-size:15px}
 a.btn{text-decoration:none;color:inherit}
-.pbar{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:6;display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;border-radius:16px;padding:10px 16px;color:#fff;background:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer;max-width:560px;margin:0 auto;text-align:left}
-.pbar span{display:flex;flex-direction:column}
-.pbar span:last-child{text-align:right}
-.pbar small{font-size:12px;opacity:.7}
-.pbar b{font-family:var(--display);font-stretch:110%;font-size:18px;font-variant-numeric:tabular-nums}
-.pbar.ok span:last-child b{color:#7EE0A8}.pbar.bad span:last-child b{color:#FFB4A8}
+.pbar{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:6;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:18px;padding:8px 8px 8px 16px;color:#fff;background:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:560px;margin:0 auto}
+.pbar .pi{display:flex;flex-direction:column;min-width:0}
+.pbar .pi small{font-size:12px;opacity:.75;white-space:nowrap}
+.pbar .pi.ok small{color:#7EE0A8;opacity:1}.pbar .pi.bad small{color:#FFB4A8;opacity:1}
+.pbar .pi b{font-family:var(--display);font-stretch:110%;font-size:20px;font-variant-numeric:tabular-nums}
+.pbar .pa{display:flex;gap:6px}
+.pbar button{border:0;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;min-height:46px}
+.pbar .pb1{background:#fff;color:#0A0A0A;padding:0 20px}
+.pbar .pb2{background:#2a2a2a;color:#fff;width:46px;font-size:24px}
+.wiz{display:flex;flex-direction:column;gap:12px}
+.wiz-t{display:flex;justify-content:space-between;align-items:baseline}
+.dots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.dots button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;padding:0}
+.dots i{font-style:normal;width:100%;height:30px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.dots .on{color:var(--ink)}.dots .on i{background:var(--ink);color:#fff;border-color:var(--ink)}
+.dots .ok i{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.xtra{margin-top:14px;background:var(--fill)}
+.step h2 i{display:none}
+
 .jobs{margin-top:14px;padding:12px;border-radius:var(--r-md);background:var(--fill);display:flex;flex-direction:column;gap:8px}
 .jk{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
 .job{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
@@ -346,17 +359,19 @@ function render(){if(!S.ok)return;if(!VIEWS[TAB])TAB="nueva";PROM=null;
   $("#app").innerHTML='<header><div class="brand"><b>AL Cotizador</b><span>Precios reales para cada trabajo</span></div><a href="../">Citas</a></header><main>'+VIEWS[TAB]()+'</main>'+(TAB==="nueva"?barra():"")+'<nav class="tabs">'+tabs.map(([k,l])=>'<button type="button" data-a="tab" data-v="'+k+'" class="'+(act===k?"on":"")+'">'+IC[k]+l+'</button>').join("")+'</nav>';
   if(keep)window.scrollTo(0,y);else window.scrollTo(0,0);
   if(TAB==="nueva"||TAB==="ver")verFotos(TAB==="nueva"?W.id:VER)}
-function barra(){const k=calc();if(!W.items.length)return "";const ok=k.ph>=k.meta-0.5;
-  return '<button type="button" class="pbar '+(ok?"ok":"bad")+'" data-a="irPrecio"><span><small>Precio</small><b>'+money0(k.fin)+'</b></span><span><small>Te quedan limpios</small><b>'+money0(k.net)+' · '+money0(k.ph)+'/h</b></span></button>'}
+function barra(){const k=calc(),P=W.paso||1,ok=k.ph>=k.meta-0.5;
+  const info=W.items.length?'<span class="pi '+(ok?"ok":"bad")+'"><small>'+money0(k.net)+' limpio · '+money0(k.ph)+'/h</small><b>'+money0(k.fin)+'</b></span>':'<span class="pi"><small>Paso '+P+' de 4</small><b>'+["Cliente","Revisión","Servicios","Precio"][P-1]+'</b></span>';
+  return '<div class="pbar">'+info+'<span class="pa">'+(P>1?'<button type="button" class="pb2" data-a="paso" data-v="'+(P-1)+'" aria-label="Atrás">‹</button>':"")+(P<4?'<button type="button" class="pb1" data-a="paso" data-v="'+(P+1)+'">Siguiente</button>':'<button type="button" class="pb1" data-a="guardar">Guardar</button>')+'</span></div>'}
 
 // --- paso a paso ---
 function vNueva(){const w=W,cli=w.clienteId?byId("clientes",w.clienteId):null;const k=calc();
   const cliOpts='<option value="">Elige un cliente…</option><option value="__nuevo" '+(w.clienteId==="__nuevo"?"selected":"")+'>+ Cliente nuevo</option>'+S.clientes.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(c=>'<option value="'+esc(c.id)+'" '+(c.id===w.clienteId?"selected":"")+'>'+esc(c.nombre)+'</option>').join("");
   const vehs=cli&&cli.vehiculos?cli.vehiculos:[];
   const esFt=w.tipo==="Bote"||w.tipo==="RV / Casa rodante";
-  let h='<div><h1>'+(w.nuevo?"Nueva cotización":"Editar cotización")+'</h1><p class="note" style="margin-top:4px">Revisa el auto, toma fotos y elige servicios. La app parte del precio de tu sitio web y te dice si te deja tu meta de '+money0(CF().metaHora)+' por hora limpio.</p></div>';
+  const P=W.paso||1;const PASOS=["Cliente","Revisión","Servicios","Precio"];
+  let h='<div class="wiz"><div class="wiz-t"><h1>'+(w.nuevo?"Cotizar":"Editar cotización")+'</h1><button type="button" class="lnk" data-a="descartar">'+(w.nuevo?"Empezar de nuevo":"Cancelar")+'</button></div><div class="dots">'+PASOS.map((t,i)=>'<button type="button" data-a="paso" data-v="'+(i+1)+'" class="'+(P===i+1?"on":P>i+1?"ok":"")+'"><i>'+(P>i+1?"✓":i+1)+'</i>'+t+'</button>').join("")+'</div></div>';
   // 1
-  h+='<section class="card step"><h2><i>1</i>Cliente y vehículo</h2><div class="f"><label for="w_cli">Cliente</label><select id="w_cli" data-w="clienteId">'+cliOpts+'</select></div>'+
+  if(P===1)h+='<section class="card step"><h2><i>1</i>Cliente y vehículo</h2><div class="f"><label for="w_cli">Cliente</label><select id="w_cli" data-w="clienteId">'+cliOpts+'</select></div>'+
    (w.clienteId==="__nuevo"?'<div class="g2"><div class="f"><label for="w_nn">Nombre</label><input id="w_nn" data-w="nuevoNombre" value="'+esc(w.nuevoNombre)+'"></div><div class="f"><label for="w_nt">Teléfono</label><input id="w_nt" type="tel" data-w="nuevoTel" value="'+esc(w.nuevoTel)+'"></div></div>':"")+
    '<div class="g2"><div class="f"><label for="w_tipo">Tipo</label><select id="w_tipo" data-w="tipo">'+opt(["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante"],w.tipo)+'</select></div><div class="f"><label for="w_veh">Vehículo</label><input id="w_veh" data-w="vehiculo" list="w_vdl" placeholder="2021 Toyota RAV4" value="'+esc(w.vehiculo)+'"><datalist id="w_vdl">'+vehs.map(v=>'<option value="'+esc(v.desc)+'"></option>').join("")+'</datalist></div></div>'+
    (esFt?'<div class="f"><label for="w_ft">Largo (pies)</label><input id="w_ft" inputmode="decimal" data-w="ft" value="'+esc(w.ft)+'" placeholder="Ej. 24"></div>':"")+
@@ -364,7 +379,7 @@ function vNueva(){const w=W,cli=w.clienteId?byId("clientes",w.clienteId):null;co
    '<div class="f"><label for="w_mi">Millas de ida (desde tu base)</label><div class="inl"><input id="w_mi" inputmode="decimal" data-w="millas" value="'+esc(w.millas)+'" placeholder="Ej. 12"><button type="button" class="btn" data-a="mapa">Ver en Mapas</button></div></div><p class="note" id="w_minote">Cuento ida y vuelta: '+(num(w.millas)*2)+' millas · gasolina '+money(k.gas)+'.</p></section>';
   // 2
   const seg=(campo,arr)=>'<div class="seg wrap">'+arr.map(([v,l])=>'<button type="button" data-a="insp" data-k="'+campo+'" data-v="'+v+'" class="'+(w.insp[campo]===v?"on":"")+'">'+l+'</button>').join("")+'</div>';
-  h+='<section class="card step"><h2><i>2</i>Fotos e inspección</h2><div id="fotos" class="fotos"></div><label class="btn" style="margin-top:10px;width:100%">📷 Tomar o agregar fotos<input type="file" accept="image/*" multiple class="fileh" id="w_foto"></label><p class="note">Toma fotos de cada problema: manchas, pelo de mascota, moho, rayones. Van en la cotización del cliente.</p>'+
+  if(P===2)h+='<section class="card step"><h2><i>2</i>Fotos e inspección</h2><div id="fotos" class="fotos"></div><label class="btn" style="margin-top:10px;width:100%">📷 Tomar o agregar fotos<input type="file" accept="image/*" multiple class="fileh" id="w_foto"></label><p class="note">Toma fotos de cada problema: manchas, pelo de mascota, moho, rayones. Van en la cotización del cliente.</p>'+
    (w.tipo==="Bote"||w.tipo==="RV / Casa rodante"?"":'<div class="f"><label>Interior</label>'+seg("int",[["ligera","Limpio"],["normal","Normal"],["sucia","Sucio"],["muy","Muy sucio"]])+'</div>')+
    '<div class="f"><label>Exterior</label>'+seg("ext",[["ligera","Limpio"],["normal","Normal"],["sucia","Sucio"],["muy","Muy sucio"]])+'</div>'+
    (w.tipo==="Bote"||w.tipo==="RV / Casa rodante"?"":'<div class="f"><label>Pelo de mascota</label>'+seg("mascotas",[["no","Nada"],["poco","Poco"],["mucho","Mucho"]])+'</div><div class="f"><label>Manchas en asientos o alfombra</label>'+seg("manchas",[["no","Ninguna"],["algunas","Algunas"],["muchas","Muchas"]])+'</div>')+
@@ -374,11 +389,10 @@ function vNueva(){const w=W,cli=w.clienteId?byId("clientes",w.clienteId):null;co
    '<div class="f"><label for="w_q">Lo que quiere el cliente</label><textarea id="w_q" data-w="quiere" rows="2" placeholder="Ej. quiere quitar el pelo del perro y la mancha del asiento">'+esc(w.quiere)+'</textarea></div>'+
    '<div class="f"><label for="w_n">Lo que necesita el auto (tu opinión)</label><textarea id="w_n" data-w="necesita" rows="2" placeholder="Ej. alfombra muy sucia, necesita extracción">'+esc(w.necesita)+'</textarea></div><div id="jobs">'+jobsHTML(k)+'</div></section>';
   // 3
-  h+='<section class="card step"><h2><i>3</i>Servicios</h2><div id="sugbox">'+sugerencias()+'</div>'+selHTML(k)+'<button type="button" class="btn" style="width:100%;margin-top:10px" data-a="elegir">+ Agregar servicio</button>'+
-   '<h2 style="margin-top:16px;font-size:15px">Trabajo extra tuyo</h2><p class="note" style="margin-top:0">Para algo que no salió arriba. Se guarda solo en tu lista y la próxima vez la app lo reconoce.</p><div class="f"><label for="w_xn">¿Qué es?</label><input id="w_xn" data-w="extraNombre" value="'+esc(w.extraNombre||"")+'" placeholder="Ej. limpiar cromo de rines"></div><div class="g2" style="margin-top:0"><div class="f"><label for="w_xh">Horas extra</label><input id="w_xh" inputmode="decimal" data-w="extraH" value="'+esc(w.extraH)+'" placeholder="0"></div><div class="f"><label for="w_xp">Gasto extra ($)</label><input id="w_xp" inputmode="decimal" data-w="extraP" value="'+esc(w.extraP)+'" placeholder="0"></div></div></section>';
+  if(P===3)h+='<section class="card step"><h2><i>3</i>Servicios</h2><div id="sugbox">'+sugerencias()+'</div>'+selHTML(k)+'<button type="button" class="btn" style="width:100%;margin-top:10px" data-a="elegir">+ Agregar servicio</button>'+
+   '<details class="fold xtra"'+(w.extraNombre||num(w.extraH)||num(w.extraP)?" open":"")+'><summary>Trabajo extra tuyo</summary><div style="padding:0 14px 14px"><p class="note" style="margin-top:0">Para algo que no salió arriba. Se guarda solo en tu lista y la próxima vez la app lo reconoce.</p><div class="f"><label for="w_xn">¿Qué es?</label><input id="w_xn" data-w="extraNombre" value="'+esc(w.extraNombre||"")+'" placeholder="Ej. limpiar cromo de rines"></div><div class="g2" style="margin-top:0"><div class="f"><label for="w_xh">Horas extra</label><input id="w_xh" inputmode="decimal" data-w="extraH" value="'+esc(w.extraH)+'" placeholder="0"></div><div class="f"><label for="w_xp">Gasto extra ($)</label><input id="w_xp" inputmode="decimal" data-w="extraP" value="'+esc(w.extraP)+'" placeholder="0"></div></div></div></details></section>';
   // 4
-  h+='<section class="card step" id="precio"><h2><i>4</i>Precio</h2>'+(w.items.length?precioHTML(k):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>')+'</section>';
-  h+='<div class="btns"><button type="button" class="btn pri" style="flex:1" data-a="guardar">Guardar cotización</button><button type="button" class="btn" data-a="descartar">'+(w.nuevo?"Empezar de nuevo":"Cancelar")+'</button></div>';
+  if(P===4)h+='<section class="card step" id="precio"><h2><i>4</i>Precio</h2>'+(w.items.length?precioHTML(k):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>')+'</section>';
   return h}
 function jobsHTML(k){const det=detectados();if(!det.length)return (W.quiere||W.necesita)?'<p class="note">No reconocí un trabajo especial en lo que escribiste. Si hay algo extra, ponlo abajo en “Trabajo extra tuyo”.</p>':"";
   const js=k.jobs;let h='<div class="jobs"><p class="jk">Lo que se necesita para lo que escribiste</p>';
@@ -399,10 +413,11 @@ function selHTML(k){if(!W.items.length)return '<p class="empty">Todavía no hay 
    (CANT.includes(l.key)?'<div class="qty"><button type="button" data-a="cant" data-i="'+i+'" data-d="-1" aria-label="Menos">−</button><span>'+l.cant+'</span><button type="button" data-a="cant" data-i="'+i+'" data-d="1" aria-label="Más">+</button></div>':"")+
    '</div><div class="r"><b>'+money0(l.web)+'</b><button type="button" class="x" data-a="quitar" data-i="'+i+'" aria-label="Quitar">×</button></div></div>').join("")+'</div>'}
 function precioHTML(k){const ok=k.ph>=k.meta-0.5,dif=k.real-k.web;
-  let h='<div class="kv"><div><span>Precio de tu sitio web</span><span>'+money(k.web)+'</span></div><div><span>Tiempo total</span><span>'+hTxt(k.H)+'</span></div><div class="sub"><span>Productos'+(k.px?" (incluye extras)":"")+'</span><span>'+money(k.P)+'</span></div><div class="sub"><span>Herramientas (desgaste)</span><span>'+money(k.herr)+'</span></div><div class="sub"><span>Gasolina ('+k.millas+' mi)</span><span>'+money(k.gas)+'</span></div><div class="sub"><span>Tu pago: '+hTxt(k.H)+' × '+money0(k.meta)+'/h limpio</span><span>'+money(k.meta*k.H)+'</span></div><div class="sub"><span>Impuestos aprox.</span><span>'+Math.round(k.tx.t*100)+'% de la ganancia</span></div><div class="sub"><span>Gasto inesperado ('+CF().imprevisto+'%)</span><span>'+money(k.imp)+'</span></div><div class="tot"><span>Precio real que necesitas</span><span>'+money(k.real)+'</span></div></div>';
-  h+=dif>2?'<div class="tip warn"><span class="ic">💲</span><div>El precio web se queda corto <b>'+money0(dif)+'</b> para este auto. Te recomiendo <b>'+money0(k.rec)+'</b>. En la cotización la diferencia sale como “ajuste por condición del vehículo”.</div></div>':'<div class="tip good"><span class="ic">✅</span><div>El precio web te deja tu meta. Te recomiendo <b>'+money0(k.rec)+'</b>.</div></div>';
-  h+='<div class="f"><label for="w_pf">Precio final para el cliente</label><input id="w_pf" inputmode="decimal" data-w="precioFinal" value="'+esc(W.precioFinal||"")+'" placeholder="'+k.rec+'"></div>';
+  let det='<div class="kv"><div><span>Precio de tu sitio web</span><span>'+money(k.web)+'</span></div><div><span>Tiempo total</span><span>'+hTxt(k.H)+'</span></div><div class="sub"><span>Productos'+(k.px?" (incluye extras)":"")+'</span><span>'+money(k.P)+'</span></div><div class="sub"><span>Herramientas (desgaste)</span><span>'+money(k.herr)+'</span></div><div class="sub"><span>Gasolina ('+k.millas+' mi)</span><span>'+money(k.gas)+'</span></div><div class="sub"><span>Tu pago: '+hTxt(k.H)+' × '+money0(k.meta)+'/h limpio</span><span>'+money(k.meta*k.H)+'</span></div><div class="sub"><span>Impuestos aprox.</span><span>'+Math.round(k.tx.t*100)+'% de la ganancia</span></div><div class="sub"><span>Gasto inesperado ('+CF().imprevisto+'%)</span><span>'+money(k.imp)+'</span></div><div class="tot"><span>Precio real que necesitas</span><span>'+money(k.real)+'</span></div></div>';
+  let h=dif>2?'<div class="tip warn"><span class="ic">💲</span><div>El precio web se queda corto <b>'+money0(dif)+'</b> para este auto. Te recomiendo <b>'+money0(k.rec)+'</b>. En la cotización la diferencia sale como “ajuste por condición del vehículo”.</div></div>':'<div class="tip good"><span class="ic">✅</span><div>El precio web te deja tu meta. Te recomiendo <b>'+money0(k.rec)+'</b>.</div></div>';
+  h+='<div class="f"><label for="w_pf">Precio final para el cliente (vacío = '+money0(k.rec)+')</label><input id="w_pf" inputmode="decimal" data-w="precioFinal" value="'+esc(W.precioFinal||"")+'" placeholder="'+k.rec+'"></div>';
   h+='<div id="pres">'+heroHTML(k)+'</div>';
+  h+='<details class="fold" style="margin-top:12px"><summary>Cómo saqué el precio · '+hTxt(k.H)+'</summary><div style="padding:0 14px 12px">'+det+'</div></details>';
   h+='<div class="f"><label for="w_nc">Nota para el cliente (opcional)</label><textarea id="w_nc" data-w="notas" rows="2">'+esc(W.notas)+'</textarea></div>';
   return h}
 function heroHTML(k){const ok=k.ph>=k.meta-0.5;return '<div class="hero" style="margin-top:12px"><div class="k">Con '+money0(k.fin)+' te quedan limpios</div><div class="v">'+money0(k.net)+'</div><div class="s">'+money0(k.ph)+' por hora · '+(ok?"cumple tu meta":"abajo de tu meta de "+money0(k.meta)+"/h")+' · después de productos, gasolina e impuestos</div></div>'}
@@ -509,7 +524,7 @@ async function guardarTrabajoNuevo(w){const h=num(w.extraH),p=num(w.extraP);if(!
 function editar(id){const e=byId("estimaciones",id);if(!e)return;const c=e.cot||{};
   W=Object.assign(nuevaW(),{id,nuevo:false,clienteId:e.clienteId,tipo:e.tipo||"Auto",vehiculo:e.vehiculo||"",ft:c.ft||"",direccion:c.direccion||"",millas:c.millas||"",insp:Object.assign(nuevaW().insp,c.insp||{}),quiere:c.quiere||"",necesita:c.necesita||"",extraH:c.extraH||"",extraP:c.extraP||"",extraNombre:c.extraNombre||"",jobs:c.jobs||{},precioFinal:c.precioFinal||"",notas:e.notas||"",
     items:c.sel||(e.items||[]).map(i=>{const s=servs().find(x=>x.nombre===i.desc);return s?{key:s.key,nombre:s.nombre,cant:num(i.cant)||1}:null}).filter(Boolean)});
-  guardarBorrador();TAB="nueva";location.hash="nueva";render()}
+  W.paso=4;guardarBorrador();TAB="nueva";location.hash="nueva";render()}
 
 // ---------- agendar ----------
 function agendar(){const e=byId("estimaciones",VER);if(!e)return;const c=e.cot||{};const H=c.calc?c.calc.H:3;
@@ -585,7 +600,7 @@ async function pdfCliente(lang){const e=byId("estimaciones",VER);if(!e)return;co
 // ---------- eventos ----------
 function setW(campo,val){if(campo==="olor")W.insp.olor=val;else W[campo]=val;guardarBorrador()}
 let tPint=null;
-function refrescar(){const k2=calc();const jb=$("#jobs");if(jb)jb.innerHTML=jobsHTML(k2);const sb=$("#sugbox");if(sb)sb.innerHTML=sugerencias();const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>');const bb=$(".pbar");if(bb)bb.outerHTML=barra()||"";else if(W.items.length){const nv=$("nav.tabs");if(nv)nv.insertAdjacentHTML("beforebegin",barra())}}
+function refrescar(){const k2=calc();const jb=$("#jobs");if(jb)jb.innerHTML=jobsHTML(k2);const sb=$("#sugbox");if(sb)sb.innerHTML=sugerencias();const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>');const bb=$(".pbar");if(bb)bb.outerHTML=barra()}
 let tJob=null;
 document.addEventListener("input",e=>{const jid=e.target.dataset.job;if(jid&&e.target.type!=="checkbox"){W.jobs[jid]=Object.assign({},W.jobs[jid]||{},{[e.target.dataset.c]:e.target.value});guardarBorrador();clearTimeout(tJob);tJob=setTimeout(()=>{const k2=calc();const pr=$("#precio");if(pr)pr.innerHTML='<h2><i>4</i>Precio</h2>'+(W.items.length?precioHTML(k2):'<p class="empty">Agrega al menos un servicio para ver el precio.</p>');const bb=$(".pbar");if(bb)bb.outerHTML=barra()||""},300);return}
   if(e.target.dataset.w==="quiere"||e.target.dataset.w==="necesita"){setW(e.target.dataset.w,e.target.value);clearTimeout(tJob);tJob=setTimeout(refrescar,500);return}});
@@ -614,7 +629,8 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]")
   if(a==="sugAdd"){const k=b.dataset.k,s=servByKey(k);if(!W.items.some(x=>x.key===k))W.items.push({key:k,nombre:s?s.nombre:k,cant:num(b.dataset.c)||1});W.precioFinal="";guardarBorrador();render();return}
   if(a==="quitar"){W.items.splice(+b.dataset.i,1);W.precioFinal="";guardarBorrador();render();return}
   if(a==="cant"){const it=W.items[+b.dataset.i];if(it){it.cant=Math.max(1,(num(it.cant)||1)+num(b.dataset.d));W.precioFinal="";guardarBorrador();render()}return}
-  if(a==="irPrecio"){const p=$("#precio");if(p)p.scrollIntoView({behavior:"smooth",block:"start"});return}
+  if(a==="irPrecio"){W.paso=4;guardarBorrador();render();window.scrollTo(0,0);return}
+  if(a==="paso"){const v=Math.max(1,Math.min(4,+b.dataset.v));if(v===4&&!W.items.length){toast("Elige al menos un servicio.");W.paso=3}else W.paso=v;guardarBorrador();render();window.scrollTo(0,0);return}
   if(a==="mapa"){const c=CF();const d=W.direccion||($("#w_dir")&&$("#w_dir").value)||"";if(!d)return toast("Escribe primero la dirección del trabajo.");window.open("https://maps.apple.com/?"+(c.base?"saddr="+encodeURIComponent(c.base)+"&":"")+"daddr="+encodeURIComponent(d)+"&dirflg=d","_blank");return}
   if(a==="guardar")return guardarCot();
   if(a==="descartar"){if(W.nuevo&&(W.items.length||S.fotos.length)&&!confirm("¿Borrar esta cotización sin guardar? Las fotos también se borran."))return;if(W.nuevo)S.fotos.forEach(f=>borrar("fotos",f.id));const wasEdit=!W.nuevo,id=W.id;W=nuevaW();guardarBorrador();if(wasEdit){VER=id;TAB="ver";location.hash="ver"}render();return}
