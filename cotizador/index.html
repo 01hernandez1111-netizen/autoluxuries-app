@@ -210,6 +210,7 @@ a.btn{text-decoration:none;color:inherit}
 .pbar button{border:0;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;min-height:46px}
 .pbar .pb1{background:#fff;color:#0A0A0A;padding:0 20px}
 .pbar .pb2{background:#2a2a2a;color:#fff;width:46px;font-size:24px}
+.tam{font-size:11px;font-weight:700;color:var(--ok);background:var(--ok-bg);padding:2px 7px;border-radius:999px;vertical-align:2px}
 .wiz{display:flex;flex-direction:column;gap:12px}
 .wiz-t{display:flex;justify-content:space-between;align-items:baseline}
 .dots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -253,6 +254,7 @@ main{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { KITS, PRODUCTOS_DEF, HERRAMIENTAS_DEF, costoKit, herramientasPorTrabajo, costoMilla, costoProductos } from "./costos.js";
+import { CATALOGO } from "./catalogo.js";
 import { TRABAJOS, detectar, palabrasClave, norm } from "./trabajos.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -305,7 +307,9 @@ const META={
  "fab-pkg-car-ai":{h:4.75,p:58,a:"x"},"fab-pkg-suv-ai":{h:5.75,p:70,a:"x"},"fab-pkg-3row-ai":{h:7,p:90,a:"x"},"fab-area":{h:.5,p:10,a:"x"}};
 const CANT=["x-shampoo","x-mold","fab-area","wheel"];
 const keyOf=s=>String(s.id||"").startsWith("web-")?s.id.slice(4):s.id;
-function servs(){return S.servicios.filter(s=>s.nombre&&s.activo!==false).map(s=>Object.assign({},s,{key:keyOf(s)}))}
+// los servicios del sitio web salen del catálogo (nombre y precio siempre correctos); los tuyos, de la app de citas
+function servs(){const out=CATALOGO.map(([k,n,p,c,desde])=>{const d=byId("servicios","web-"+k)||{};return Object.assign({},d,{id:"web-"+k,key:k,nombre:n,precio:p,categoria:c,desde})}).filter(s=>s.activo!==false);
+  S.servicios.forEach(s=>{if(s.nombre&&s.activo!==false&&!String(s.id).startsWith("web-"))out.push(Object.assign({},s,{key:keyOf(s)}))});return out}
 function servByKey(k){return servs().find(s=>s.key===k)}
 // promedio real de horas de tus trabajos completados (solo citas con un servicio)
 let PROM=null;
@@ -432,8 +436,11 @@ function elegir(){const t=W.tipo,cat={"Auto":"Auto","SUV / Camioneta":"SUV / Cam
   const ok=s=>{if(s.categoria===cat)return true;if(["Auto","SUV / Camioneta","Pickup","Bote","RV / Casa rodante"].includes(s.categoria))return false;
     if(s.categoria==="Protección de tela"){if(lancha)return false;if(/front|area/.test(s.key))return true;return t==="Auto"?/-car/.test(s.key):!/-car/.test(s.key)}
     if(lancha)return /mold|custom/.test(s.key)||!String(s.id).startsWith("web-");return true};
-  const grupos={};servs().filter(ok).forEach(s=>{const g=s.categoria===cat?"Servicios":s.key.startsWith("x-")?"Extras":s.categoria==="Protección de tela"?"Protección de tela":"Otros servicios";(grupos[g]=grupos[g]||[]).push(s)});
-  let b="";["Servicios","Extras","Otros servicios","Protección de tela"].forEach(g=>{if(!grupos[g])return;b+='<h2 style="margin-top:14px">'+g+'</h2><div class="list">'+grupos[g].sort((a,c)=>num(a.precio)-num(c.precio)).map(s=>{const bs=base(s),ya=W.items.some(x=>x.key===s.key);return '<button type="button" class="row pick'+(ya?" on":"")+'" data-a="pick" data-k="'+esc(s.key)+'"><div style="text-align:left"><div class="t">'+esc(s.nombre)+'</div><div class="s">'+(bs.ft?"por pie":"≈ "+hTxt(bs.h))+' · productos '+(bs.ft?money(bs.ft.p)+"/pie":money0(bs.p))+'</div></div><div class="r"><b>'+(s.desde?"desde ":"")+money0(num(s.precio))+'</b>'+(ya?'<div class="s">agregado</div>':"")+'</div></button>'}).join("")+'</div>'});
+  const TAM=["Auto","SUV / Camioneta","Pickup"],esAuto=TAM.includes(cat);
+  const okT=s=>esAuto&&TAM.includes(s.categoria)?true:ok(s);
+  const ordT=s=>{const tipoS=["full-","int-","ext-"].findIndex(x=>s.key.startsWith(x));return (tipoS<0?9:tipoS)*10+(s.categoria===cat?0:1+TAM.indexOf(s.categoria))};
+  const grupos={};servs().filter(okT).forEach(s=>{const g=(s.categoria===cat||(esAuto&&TAM.includes(s.categoria)))?"Servicios":s.key.startsWith("x-")?"Extras":s.categoria==="Protección de tela"?"Protección de tela":"Otros servicios";(grupos[g]=grupos[g]||[]).push(s)});
+  let b="";["Servicios","Extras","Otros servicios","Protección de tela"].forEach(g=>{if(!grupos[g])return;b+='<h2 style="margin-top:14px">'+g+'</h2><div class="list">'+grupos[g].sort((a,c)=>g==="Servicios"&&esAuto?ordT(a)-ordT(c):num(a.precio)-num(c.precio)).map(s=>{const bs=base(s),ya=W.items.some(x=>x.key===s.key);return '<button type="button" class="row pick'+(ya?" on":"")+'" data-a="pick" data-k="'+esc(s.key)+'"><div style="text-align:left"><div class="t">'+esc(s.nombre)+(esAuto&&s.categoria===cat&&g==="Servicios"?' <small class="tam">su tamaño</small>':"")+'</div><div class="s">'+(bs.ft?"por pie":"≈ "+hTxt(bs.h))+' · productos '+(bs.ft?money(bs.ft.p)+"/pie":money0(bs.p))+'</div></div><div class="r"><b>'+(s.desde?"desde ":"")+money0(num(s.precio))+'</b>'+(ya?'<div class="s">agregado</div>':"")+'</div></button>'}).join("")+'</div>'});
   if(!b)b='<p class="empty">No hay servicios para este tipo. Revisa que la app de citas tenga tus servicios del sitio web.</p>';
   sheet("Agregar servicio",b)}
 
